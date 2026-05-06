@@ -163,9 +163,10 @@ Next steps:
 ```bash
 ./scripts/setup.sh --agents=3
 ./scripts/setup.sh --agents=2 --repo=git@github.com:pakodiazdev/sushigo.git
+./scripts/setup.sh --agents=2 --branch=feature/065-my-feature
 ```
 
-Clones SushiGo N times, generates isolated `.env` files, creates one PostgreSQL database per agent, runs `composer install`, `npm install`, and `php artisan migrate --seed` for each. Idempotent — safe to re-run.
+Clones SushiGo N times on `main` by default (or `--branch` if specified), generates isolated `.env` files, creates one PostgreSQL database per agent, runs `composer install`, `npm install`, and `php artisan migrate --seed` for each. Idempotent — safe to re-run.
 
 ---
 
@@ -184,9 +185,10 @@ Single-agent mode runs in the foreground — Overmind shows colored logs for eac
 
 ```bash
 ./scripts/create-agent.sh
+./scripts/create-agent.sh --branch=feature/066-other-feature
 ```
 
-Auto-detects the next available letter and port. Creates a new clone, database, and `.env` without touching existing agents.
+Auto-detects the next available letter and port. Clones sushigo on `main` by default, or on the specified branch. Creates the database and `.env` without touching existing agents.
 
 ---
 
@@ -288,4 +290,9 @@ This lab solves that by keeping the "one command → fully working environment" 
 
 ## License
 
-MIT
+This project is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+**You may:** use, study, and share this project for personal, educational, and portfolio purposes.  
+**You may not:** use this project, or any derivative of it, for commercial purposes without explicit written permission from the author.
+
+© 2026 [Pako Díaz](https://github.com/pakodiazdev). All commercial rights reserved.
