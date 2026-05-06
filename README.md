@@ -1,26 +1,52 @@
 # sushigo-dev-lab
 
 > **Multi-agent local development environment for [SushiGo](https://github.com/pakodiazdev/sushigo)**  
-> Run multiple independent branches simultaneously — shared infrastructure, zero redundancy.
+> Run multiple independent branches simultaneously — shared infrastructure, minimal thermal footprint.
 
 ---
 
 ## The problem
 
-Modern AI-assisted development means working on several issues at the same time: one agent fixing a bug, another building a feature, you reviewing both. The naive solution — spin up a full Docker stack per clone — kills a Mac in minutes.
+Working with AI coding agents (Claude Code, Copilot, Codex) naturally leads to parallel development: one agent builds a feature on branch A, another fixes a bug on branch B, you review and test both. The bottleneck isn't the AI — it's the machine.
+
+The [SushiGo](https://github.com/pakodiazdev/sushigo) production dev stack is thorough and correct:
 
 ```
-❌ Naive approach                     ✅ This repo
-─────────────────────────────         ──────────────────────────────────
-agent-a: PostgreSQL + Redis           PostgreSQL  ──┐
-agent-b: PostgreSQL + Redis           Redis       ──┼── shared (1 instance each)
-agent-c: PostgreSQL + Redis           Mailpit     ──┘
-= 3× everything, 100% waste           
-                                      agent-a: Laravel + Vite (local)
-                                      agent-b: Laravel + Vite (local)
-                                      agent-c: Laravel + Vite (local)
-                                      = 3× only what must be separate
+Current sushigo stack (with E2E running):
+
+dev_container      Apache + PHP-FPM + Node + Vite watchers    ← branch you're developing
+devtest_container  Apache + PHP-FPM + Node + Vite watchers    ← isolated test env
+nginx_proxy        Nginx reverse proxy + SSL termination
+postgres_container PostgreSQL 15
+pgadmin_container  PgAdmin4 web UI
+mailhog_container  Mailhog SMTP catcher
+test_e2e           Apache + PHP-FPM + Node + Vite watchers    ← E2E isolated env
+cypress            Chrome + Cypress runner (containerized)
+cypress-ui         VNC server + X11 + Chrome + Cypress UI
+
+= 9 containers
+= 3 full PHP+Apache+Node stacks running simultaneously
+= 1 browser inside Docker (VNC)
+= Mac Intel fan at 100%, second branch impossible
 ```
+
+This is the right architecture for a production-grade project. But on Mac Intel hardware, running the full stack while Cypress executes E2E tests causes sustained thermal throttling — the machine heats up, slows down, and makes it impossible to have a second agent working on a different branch at the same time.
+
+The goal was not to replace the full stack — it's the reference. The goal was to find a **lighter alternative** for day-to-day multi-agent development that preserves independence between branches and doesn't require sacrificing thermal headroom.
+
+```
+sushigo-dev-lab approach:
+
+Shared (Docker, 1 instance each):        Per agent (local processes, lightweight):
+  PostgreSQL  ──┐                          agent-a:  php artisan serve + npm run dev
+  Redis       ──┼── one stack total        agent-b:  php artisan serve + npm run dev
+  Mailpit     ──┘                          agent-c:  php artisan serve + npm run dev
+
+No Nginx. No Apache. No browser in Docker. No VNC.
+Cypress runs locally against whichever agent is under test.
+```
+
+The result: multiple active branches, each with full API + frontend + isolated database, without the machine overheating.
 
 ---
 
@@ -78,6 +104,21 @@ Process management uses **[Overmind](https://github.com/DarthSim/overmind)** —
 
 ---
 
+## Design philosophy
+
+The [SushiGo](https://github.com/pakodiazdev/sushigo) full stack was designed with a clear goal: `docker compose up` → complete environment ready in minutes → developer adds value immediately, without fighting forgotten configurations. No manual steps, no environment drift, no "it works on my machine."
+
+**sushigo-dev-lab inherits that same philosophy.** One command initializes everything: clones the repo, generates `.env` files, creates isolated databases, installs all dependencies, and runs migrations. The developer goes from zero to two (or three) independent, running environments without touching a config file.
+
+```bash
+# That's it. Two fully configured, isolated environments in one command.
+./scripts/setup.sh --agents=2
+```
+
+This repo is a **complement**, not a replacement. The full sushigo stack remains the reference for CI, production-like testing, and team onboarding. The dev-lab is the lightweight alternative for day-to-day parallel development on Mac Intel hardware.
+
+---
+
 ## Quickstart
 
 ```bash
@@ -85,16 +126,13 @@ Process management uses **[Overmind](https://github.com/DarthSim/overmind)** —
 git clone https://github.com/pakodiazdev/sushigo-dev-lab.git
 cd sushigo-dev-lab
 
-# 2. Start shared services (PostgreSQL, Redis, Mailpit)
-docker compose up -d
+# 2. Initialize 2 independent agents (shares Docker services, clones, configures, installs, migrates)
+./scripts/setup.sh --agents=2
 
-# 3. Initialize 3 independent agents (clone + configure + install + migrate)
-./scripts/setup.sh --agents=3
-
-# 4. Start a specific agent
+# 3. Start an agent
 ./scripts/init.sh agent-a
 
-# 5. Open in browser
+# 4. Open in browser
 open http://localhost:5171   # agent-a frontend
 open http://localhost:8001   # agent-a API
 ```
@@ -134,11 +172,11 @@ Clones SushiGo N times, generates isolated `.env` files, creates one PostgreSQL 
 ### `init.sh` — start agents
 
 ```bash
-./scripts/init.sh             # start all agents (each in a tmux window)
+./scripts/init.sh             # start all agents (each in a background Overmind session)
 ./scripts/init.sh agent-a     # start one agent (foreground, Overmind output)
 ```
 
-Single-agent mode runs in the foreground so you see Overmind's live output. Ctrl+C cleanly stops both Laravel and Vite. All-agents mode opens each in a named tmux window — attach with `tmux attach -t agent-a`.
+Single-agent mode runs in the foreground — Overmind shows colored logs for each process. Ctrl+C cleanly stops both Laravel and Vite. All-agents mode starts each agent in the background; use `overmind connect web` inside the agent directory to inspect logs.
 
 ---
 
@@ -190,16 +228,16 @@ git checkout feature/065-new-feature
 overmind restart web
 ```
 
-**Check what's running across all agents:**
+**Check Overmind process status inside an agent:**
 ```bash
-tmux ls
-# agent-a: 1 windows
-# agent-b: 1 windows
+cd agents/sushigo-agent-a
+overmind status
 ```
 
-**Stop all agents:**
+**Stop all processes for one agent:**
 ```bash
-tmux kill-server
+cd agents/sushigo-agent-a
+overmind stop
 ```
 
 **Run Cypress against a specific agent:**
@@ -224,13 +262,19 @@ All agents connect to the same PostgreSQL instance but use isolated databases (`
 
 ## Project context
 
-**sushigo-dev-lab** is part of the [SushiGo](https://github.com/pakodiazdev/sushigo) project — a full-stack tenant platform built with:
+**sushigo-dev-lab** is part of the [SushiGo](https://github.com/pakodiazdev/sushigo) ecosystem — a full-stack tenant platform built with:
 
 - **Backend:** Laravel 12 · Passport OAuth · Spatie Permissions · PostgreSQL
 - **Frontend:** React 19 · TanStack Router/Query · Zustand · Tailwind CSS
 - **Mobile:** Flutter (in progress)
 
-This lab was designed specifically to support AI-assisted parallel development (Claude Code, Copilot, Codex) — where multiple agents work different branches concurrently and a human reviews, tests, and merges.
+### Why this exists
+
+The development workflow on SushiGo is AI-assisted: Claude Code, Copilot, and Codex agents work on different issues in parallel while the developer reviews, tests, and merges. This multiplies throughput significantly — but it requires multiple independent environments running at the same time.
+
+The full sushigo Docker stack (`docker compose up`) is the correct approach for a single developer environment: reproducible, self-contained, zero manual configuration. The problem is hardware: running 9 containers (including 3 PHP+Apache+Node stacks and a Cypress browser) on Mac Intel causes thermal throttling that makes parallel work impossible.
+
+This lab solves that by keeping the "one command → fully working environment" promise while drastically reducing the per-agent resource cost. The full stack stays as the reference for CI and production-like testing.
 
 ---
 
