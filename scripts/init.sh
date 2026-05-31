@@ -26,6 +26,17 @@ TARGET="${1:-}"
 
 PG_USER="${POSTGRES_USER:-admin}"
 
+# ── Shared helper: write Procfile.dev with absolute paths ────────────────────
+# Usage: write_procfile <agent_dir>
+# Reads AGENT_ROOT, APP_PORT, VITE_PORT from <agent_dir>/.env.
+write_procfile() {
+  local agent_dir="$1"
+  cat > "${agent_dir}/Procfile.dev" <<'PROCFILE'
+web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${AGENT_ROOT}/code/api/public
+vite:   npm --prefix ${AGENT_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
+PROCFILE
+}
+
 # ── Ensure shared services are running ──────────────────────────────────────
 if ! docker compose -f "${ROOT_DIR}/docker-compose.yml" exec -T db \
   pg_isready -U "${PG_USER}" &>/dev/null 2>&1; then
@@ -60,15 +71,13 @@ if [ -n "$TARGET" ]; then
     exit 1
   fi
 
-  if [ ! -f "${AGENT_DIR}/init-agent-workspace.sh" ]; then
-    echo "❌ init-agent-workspace.sh not found in ${AGENT_DIR}"
-    echo "   Make sure the sushigo clone has the script at its root."
-    exit 1
-  fi
-
   echo "🚀 Starting ${TARGET}..."
+  set -o allexport
+  source "${AGENT_DIR}/.env" 2>/dev/null || true
+  set +o allexport
+  write_procfile "${AGENT_DIR}"
   cd "${AGENT_DIR}"
-  exec bash init-agent-workspace.sh
+  exec overmind start -f "${AGENT_DIR}/Procfile.dev"
 fi
 
 # ── All agents (background) ──────────────────────────────────────────────────
@@ -86,13 +95,8 @@ echo ""
 for AGENT_DIR in "${AGENT_DIRS[@]}"; do
   AGENT_NAME="$(basename "${AGENT_DIR}")"
 
-  if [ ! -f "${AGENT_DIR}/init-agent-workspace.sh" ]; then
-    echo "  ⚠️  Skipping ${AGENT_NAME} — init-agent-workspace.sh not found"
-    continue
-  fi
-
-  if [ ! -f "${AGENT_DIR}/Procfile.dev" ]; then
-    echo "  ⚠️  Skipping ${AGENT_NAME} — Procfile.dev not found"
+  if [ ! -f "${AGENT_DIR}/.env" ]; then
+    echo "  ⚠️  Skipping ${AGENT_NAME} — .env not found (run setup.sh first)"
     continue
   fi
 
@@ -102,24 +106,20 @@ for AGENT_DIR in "${AGENT_DIRS[@]}"; do
   echo "    Backend  → http://127.0.0.1:${APP_PORT:-?}"
   echo "    Frontend → http://localhost:${VITE_PORT:-?}"
 
-  # init-agent-workspace.sh runs Overmind in foreground; use -D for daemon mode
-  # after sourcing .env so port variables are available to the child process.
+  # Always regenerate Procfile.dev from the lab — never rely on the repo's copy.
+  write_procfile "${AGENT_DIR}"
   (
     set -o allexport
     source "${AGENT_DIR}/.env" 2>/dev/null || true
     set +o allexport
     cd "${AGENT_DIR}"
-    if ! command -v overmind &>/dev/null; then
-      echo "  ❌ Overmind not found — brew install overmind"
-      exit 1
-    fi
-    overmind start -f Procfile.dev -D
+    overmind start -f "${AGENT_DIR}/Procfile.dev" -D
   ) &
 
-  unset APP_PORT VITE_PORT
+  unset APP_PORT VITE_PORT AGENT_ROOT
 done
 
 echo ""
 echo "All agents started. To inspect a specific agent:"
-echo "  cd agents/<agent-name> && overmind connect web"
-echo "  cd agents/<agent-name> && overmind stop"
+echo "  cd agents/<agent-name> && overmind connect web   # attach to web process"
+echo "  cd agents/<agent-name> && overmind quit          # stop all processes"
