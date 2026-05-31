@@ -100,11 +100,35 @@ else
   echo "CACHE_PREFIX=agent_${LETTER}_" >> code/api/.env
 fi
 
+# Configure webapp .env (VITE_HMR_HOST intentionally unset → Vite auto-detects in local dev)
+AGENT_LABEL="[$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')]"
+cat > "${AGENT_DIR}/code/webapp/.env" <<EOF
+VITE_API_URL=http://localhost:${APP_PORT}/api/v1
+VITE_APP_ENV=development
+VITE_TIME_FORMAT=12
+VITE_DEV_DEBUGGER_START_HIDDEN=false
+VITE_LOGIN_WITH_DEVDEBUG=true
+VITE_DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest
+VITE_ENV_BADGE=🟢 
+VITE_AGENT_LABEL=${AGENT_LABEL} 
+EOF
+
 cat > "${AGENT_DIR}/.env" <<EOF
 APP_PORT=${APP_PORT}
 VITE_PORT=${VITE_PORT}
 DB_DATABASE=${DB_NAME}
+AGENT_ROOT=${AGENT_DIR}
 EOF
+
+# Patch Procfile.dev with absolute paths so overmind works regardless of cwd
+# (overmind creates its own tmux server which does not inherit the caller's cwd)
+cat > "${AGENT_DIR}/Procfile.dev" <<'PROCFILE'
+web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${AGENT_ROOT}/code/api/public
+vite:   npm --prefix ${AGENT_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
+PROCFILE
+
+# Mark Procfile.dev as skip-worktree: dev-lab owns it locally, git ignores changes
+git -C "${AGENT_DIR}" update-index --skip-worktree Procfile.dev
 
 # ── Create database ───────────────────────────────────────────────────────────
 echo "🗄️  Creating database ${DB_NAME}..."
