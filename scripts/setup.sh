@@ -133,6 +133,9 @@ for i in $(seq 0 $((AGENTS - 1))); do
       echo "  🛠  Running migrations (schema may have changed)..."
       cd "${AGENT_DIR}/code/api"
       php artisan migrate --force --quiet
+
+      echo "  📖 Generating Swagger docs..."
+      php artisan l5-swagger:generate --quiet
       # Ensure AGENT_ROOT is present and Procfile.dev uses absolute paths
       if ! grep -q "^AGENT_ROOT=" "${AGENT_DIR}/.env"; then
         echo "AGENT_ROOT=${AGENT_DIR}" >> "${AGENT_DIR}/.env"
@@ -167,12 +170,24 @@ PROCFILE
   else
     echo "CACHE_PREFIX=agent_${LETTER}_" >> code/api/.env
   fi
+  # Enable dev-debug login for local development
+  sed -i '' "s|^LOGIN_WITH_DEVDEBUG=.*|LOGIN_WITH_DEVDEBUG=true|" code/api/.env
+  sed -i '' "s|^DEV_LOGIN_ALLOWED_ENVIRONMENTS=.*|DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest,local|" code/api/.env
+  # Enable clock simulation for local development
+  sed -i '' "s|^CLOCK_SIMULATION_ENABLED=.*|CLOCK_SIMULATION_ENABLED=true|" code/api/.env
+  # Allow the agent's Vite dev-server port in CORS (both localhost and 127.0.0.1)
+  CORS_ORIGINS="http://localhost:${VITE_PORT},http://127.0.0.1:${VITE_PORT}"
+  if grep -q "^CORS_ALLOWED_ORIGINS" code/api/.env; then
+    sed -i '' "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}|" code/api/.env
+  else
+    echo "CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}" >> code/api/.env
+  fi
 
   # Configure webapp .env (VITE_HMR_HOST intentionally unset → Vite auto-detects in local dev)
   AGENT_LABEL="[$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')]"
   cat > "${AGENT_DIR}/code/webapp/.env" <<EOF
 VITE_API_URL=http://localhost:${APP_PORT}/api/v1
-VITE_APP_ENV=development
+VITE_APP_ENV=dev
 VITE_TIME_FORMAT=12
 VITE_DEV_DEBUGGER_START_HIDDEN=false
 VITE_LOGIN_WITH_DEVDEBUG=true
@@ -222,9 +237,15 @@ PROCFILE
   cd "${AGENT_DIR}/code/api"
   php artisan key:generate --ansi --quiet
 
-  echo "  🛠  Running migrations and seeders..."
+  echo "  � Generating Passport OAuth keys..."
+  php artisan passport:keys --force --quiet
+
+  echo "  �🛠  Running migrations and seeders..."
   php artisan migrate --force --quiet
   php artisan db:seed --force --quiet
+
+  echo "  📖 Generating Swagger docs..."
+  php artisan l5-swagger:generate --quiet
 
   echo "  ✅ agent-${LETTER} ready"
 done
