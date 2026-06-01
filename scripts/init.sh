@@ -2,38 +2,47 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# init.sh — Start one or all agents
+# init.sh — Start one or all workspaces
 #
-# Single agent (foreground): delegates to init-agent-workspace.sh, which loads
+# Single workspace (foreground): delegates to init-agent-workspace.sh, which loads
 # .env, validates prerequisites, and starts Overmind interactively.
 #
-# All agents (background): sources each agent's .env directly and calls
+# All workspaces (background): sources each workspace's .env directly and calls
 # `overmind start -D` (daemon mode). init-agent-workspace.sh is intentionally
 # bypassed here because it runs Overmind in foreground mode only, and there is
 # no standard way to daemonize it via the script. If init-agent-workspace.sh
 # gains additional setup steps in the future, replicate them here.
 #
 # Usage:
-#   ./scripts/init.sh               Start all agents (background)
-#   ./scripts/init.sh agent-a       Start one agent (foreground, Overmind output)
+#   ./scripts/init.sh                  Start all workspaces (background)
+#   ./scripts/init.sh sushigo-a        Start one workspace (foreground, Overmind output)
+#   ./scripts/init.sh --count=2        Start only the first N workspaces (background)
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-AGENTS_DIR="${ROOT_DIR}/agents"
+WS_DIR_BASE="${ROOT_DIR}/workspaces"
 
-TARGET="${1:-}"
+TARGET=""
+COUNT=""
+
+for arg in "$@"; do
+  case "$arg" in
+    --count=*) COUNT="${arg#--count=}" ;;
+    *) TARGET="$arg" ;;
+  esac
+done
 
 PG_USER="${POSTGRES_USER:-admin}"
 
 # ── Shared helper: write Procfile.dev with absolute paths ────────────────────
-# Usage: write_procfile <agent_dir>
-# Reads AGENT_ROOT, APP_PORT, VITE_PORT from <agent_dir>/.env.
+# Usage: write_procfile <ws_dir>
+# Reads WORKSPACE_ROOT, APP_PORT, VITE_PORT from <ws_dir>/.env.
 write_procfile() {
-  local agent_dir="$1"
-  cat > "${agent_dir}/Procfile.dev" <<'PROCFILE'
-web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${AGENT_ROOT}/code/api/public
-vite:   npm --prefix ${AGENT_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
+  local ws_dir="$1"
+  cat > "${ws_dir}/Procfile.dev" <<'PROCFILE'
+web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
+vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
 PROCFILE
 }
 
@@ -80,46 +89,62 @@ if [ -n "$TARGET" ]; then
   exec overmind start -f "${AGENT_DIR}/Procfile.dev"
 fi
 
-# ── All agents (background) ──────────────────────────────────────────────────
-AGENT_DIRS=("${AGENTS_DIR}"/sushigo-agent-*)
+# ── All workspaces (background) ────────────────────────────────────────────
 
-if [ ${#AGENT_DIRS[@]} -eq 0 ] || [ ! -d "${AGENT_DIRS[0]}" ]; then
-  echo "❌ No agents found in ${AGENTS_DIR}"
-  echo "   Run ./scripts/setup.sh --agents=2 first."
-  exit 1
+# Count existing configured workspaces
+EXISTING=0
+for d in "${WS_DIR_BASE}"/sushigo-*/; do
+  [ -f "${d}.env" ] && EXISTING=$((EXISTING + 1))
+done
+
+if [ -n "$COUNT" ] && [ "$COUNT" -gt "$EXISTING" ]; then
+  # Explicit count exceeds existing workspaces — set up the missing ones
+  echo "⚙️  Requested ${COUNT} workspace(s) but only ${EXISTING} configured — running setup for missing ones..."
+  "${SCRIPT_DIR}/setup.sh" --workspaces="${COUNT}"
+elif [ -z "$COUNT" ] && [ "$EXISTING" -eq 0 ]; then
+  # No count specified and no workspaces exist — set up at least 1
+  echo "⚙️  No workspaces found — running setup for 1 workspace..."
+  "${SCRIPT_DIR}/setup.sh" --workspaces=1
 fi
 
-echo "🚀 Starting ${#AGENT_DIRS[@]} agent(s) in background..."
+WS_DIRS=("${WS_DIR_BASE}"/sushigo-*)
+
+echo "🚀 Starting ${#WS_DIRS[@]} workspace(s) in background..."
 echo ""
 
-for AGENT_DIR in "${AGENT_DIRS[@]}"; do
-  AGENT_NAME="$(basename "${AGENT_DIR}")"
+STARTED=0
+for WS_DIR in "${WS_DIRS[@]}"; do
+  if [ -n "$COUNT" ] && [ "$STARTED" -ge "$COUNT" ]; then
+    break
+  fi
+  WS_NAME="$(basename "${WS_DIR}")"
 
-  if [ ! -f "${AGENT_DIR}/.env" ]; then
-    echo "  ⚠️  Skipping ${AGENT_NAME} — .env not found (run setup.sh first)"
+  if [ ! -f "${WS_DIR}/.env" ]; then
+    echo "  ⚠️  Skipping ${WS_NAME} — .env not found (run setup.sh first)"
     continue
   fi
 
-  source "${AGENT_DIR}/.env" 2>/dev/null || true
+  source "${WS_DIR}/.env" 2>/dev/null || true
 
-  echo "  ▶ ${AGENT_NAME}"
+  echo "  ▶ ${WS_NAME}"
   echo "    Backend  → http://127.0.0.1:${APP_PORT:-?}"
   echo "    Frontend → http://localhost:${VITE_PORT:-?}"
 
   # Always regenerate Procfile.dev from the lab — never rely on the repo's copy.
-  write_procfile "${AGENT_DIR}"
+  write_procfile "${WS_DIR}"
   (
     set -o allexport
-    source "${AGENT_DIR}/.env" 2>/dev/null || true
+    source "${WS_DIR}/.env" 2>/dev/null || true
     set +o allexport
-    cd "${AGENT_DIR}"
-    overmind start -f "${AGENT_DIR}/Procfile.dev" -D
+    cd "${WS_DIR}"
+    overmind start -f "${WS_DIR}/Procfile.dev" -D
   ) &
 
-  unset APP_PORT VITE_PORT AGENT_ROOT
+  unset APP_PORT VITE_PORT WORKSPACE_ROOT
+  STARTED=$((STARTED + 1))
 done
 
 echo ""
-echo "All agents started. To inspect a specific agent:"
-echo "  cd agents/<agent-name> && overmind connect web   # attach to web process"
-echo "  cd agents/<agent-name> && overmind quit          # stop all processes"
+echo "All workspaces started. To inspect a specific workspace:"
+echo "  cd workspaces/<ws-name> && overmind connect web   # attach to web process"
+echo "  cd workspaces/<ws-name> && overmind quit          # stop all processes"

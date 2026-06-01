@@ -4,7 +4,7 @@
 
 ```
 Docker  = shared infrastructure  (PostgreSQL, Redis, Mailpit)
-Local   = per-agent execution    (Laravel, Vite, Overmind)
+Local   = per-workspace execution (Laravel, Vite, Overmind)
 ```
 
 Heavy services run once and are shared. Everything that must be isolated per branch (code, database, ports) runs locally as lightweight processes.
@@ -19,40 +19,40 @@ This lab keeps the "one command → fully working environment" promise at a frac
 
 | Component | Where | Responsibility |
 |---|---|---|
-| `docker-compose.yml` | dev-lab | PostgreSQL, Redis, Mailpit — one instance, shared by all agents |
+| `docker-compose.yml` | dev-lab | PostgreSQL, Redis, Mailpit — one instance, shared by all workspaces |
 | `scripts/setup.sh` | dev-lab | Clone sushigo N times, configure, install, migrate |
-| `scripts/init.sh` | dev-lab | Single agent: delegates to `init-agent-workspace.sh` (foreground). All agents: sources `.env` + `overmind start -D` per agent (background) |
-| `scripts/create-agent.sh` | dev-lab | Add a new agent at any time |
-| `scripts/reset-agent-db.sh` | dev-lab | Wipe + remigrate one agent's DB |
+| `scripts/init.sh` | dev-lab | Single workspace: delegates to `init-agent-workspace.sh` (foreground). All workspaces: sources `.env` + `overmind start -D` per workspace (background) |
+| `scripts/create-workspace.sh` | dev-lab | Add a new workspace at any time |
+| `scripts/reset-workspace-db.sh` | dev-lab | Wipe + remigrate one workspace's DB |
 | `Procfile.dev` | sushigo | Define which processes to run (web + vite) |
 | `init-agent-workspace.sh` | sushigo | Read `.env`, start Overmind |
 
 **Key principle:** sushigo knows how to boot itself via `init-agent-workspace.sh` and `Procfile.dev`. The dev-lab handles cloning, environment configuration, and database setup — then delegates process management to sushigo's own boot script.
 
-## Agent isolation
+## Workspace isolation
 
-Each agent is a full git clone of sushigo with:
+Each workspace is a full git clone of sushigo with:
 
-| Resource | Isolated per agent |
+| Resource | Isolated per workspace |
 |---|---|
 | Git branch | ✅ independent |
 | Laravel process | ✅ own `php -S` on unique port |
 | Vite process | ✅ own `npm run dev` on unique port |
-| PostgreSQL database | ✅ `sushigo_agent_<letter>` |
+| PostgreSQL database | ✅ `sushigo_ws_<letter>` |
 | `.env` file | ✅ own APP_PORT, VITE_PORT, DB_DATABASE |
 
-Redis and Mailpit are shared — this is intentional. Cache keys are namespaced by `CACHE_PREFIX` set in each agent's `code/api/.env` (the Laravel env, not the agent root `.env`). Mailpit captures all outbound mail from all agents in one UI, which is convenient for development.
+Redis and Mailpit are shared — this is intentional. Cache keys are namespaced by `CACHE_PREFIX` set in each workspace's `code/api/.env` (the Laravel env, not the workspace root `.env`). Mailpit captures all outbound mail from all workspaces in one UI, which is convenient for development.
 
 ## Port assignment
 
-| Agent | APP_PORT | VITE_PORT | Database |
+| Workspace | APP_PORT | VITE_PORT | Database |
 |---|---|---|---|
-| agent-a | 8001 | 5171 | sushigo_agent_a |
-| agent-b | 8002 | 5172 | sushigo_agent_b |
-| agent-c | 8003 | 5173 | sushigo_agent_c |
-| agent-d | 8004 | 5174 | sushigo_agent_d |
+| sushigo-a | 8001 | 5171 | sushigo_ws_a |
+| sushigo-b | 8002 | 5172 | sushigo_ws_b |
+| sushigo-c | 8003 | 5173 | sushigo_ws_c |
+| sushigo-d | 8004 | 5174 | sushigo_ws_d |
 
-Ports are auto-assigned sequentially by `create-agent.sh`. No manual configuration needed.
+Ports are auto-assigned sequentially by `create-workspace.sh`. No manual configuration needed.
 
 ## Process management: Overmind
 
@@ -74,9 +74,9 @@ Overmind gives:
 ## Startup flow
 
 ```
-make init AGENT=agent-a
-  └── scripts/init.sh agent-a
-        └── cd agents/sushigo-agent-a
+make init WORKSPACE=sushigo-a
+  └── scripts/init.sh sushigo-a
+        └── cd workspaces/sushigo-a
         └── bash init-agent-workspace.sh
               └── source .env  (APP_PORT=8001, VITE_PORT=5171)
               └── overmind start -f Procfile.dev

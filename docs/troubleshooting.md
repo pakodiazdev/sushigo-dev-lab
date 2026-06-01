@@ -18,7 +18,7 @@ docker compose ps
 If the volume is corrupted:
 
 ```bash
-docker compose down -v   # destroys pgdata volume — all agent DBs will need reset
+docker compose down -v   # destroys pgdata volume — all workspace DBs will need reset
 docker compose up -d
 ```
 
@@ -49,14 +49,14 @@ docker compose restart redis
 
 ---
 
-## Agent setup
+## Workspace setup
 
 ### `setup.sh` fails mid-run
 
-`setup.sh` is safe to re-run — for existing agent directories it skips cloning and `.env` configuration, but still runs `composer install`, `npm install`, and `php artisan migrate` to pick up any dependency or schema changes. New agents are set up in full. Fix the underlying error, then run again:
+`setup.sh` is safe to re-run — for existing workspace directories it skips cloning and `.env` configuration, but still runs `composer install`, `npm install`, and `php artisan migrate` to pick up any dependency or schema changes. New workspaces are set up in full. Fix the underlying error, then run again:
 
 ```bash
-./scripts/setup.sh --agents=2
+./scripts/setup.sh --workspaces=2
 ```
 
 ### Composer install fails
@@ -68,7 +68,7 @@ composer install: memory exhausted
 Increase PHP memory limit for the install:
 
 ```bash
-cd agents/sushigo-agent-a/code/api
+cd workspaces/sushigo-a/code/api
 php -d memory_limit=-1 /usr/local/bin/composer install
 ```
 
@@ -77,7 +77,7 @@ php -d memory_limit=-1 /usr/local/bin/composer install
 If `node_modules` is in a bad state:
 
 ```bash
-cd agents/sushigo-agent-a/code/webapp
+cd workspaces/sushigo-a/code/webapp
 rm -rf node_modules package-lock.json
 npm install
 ```
@@ -91,25 +91,25 @@ npm install
 Not an error. If you need a clean database:
 
 ```bash
-./scripts/reset-agent-db.sh agent-a
+./scripts/reset-workspace-db.sh sushigo-a
 ```
 
-### All agent slots are in use
+### All workspace slots are in use
 
 ```
-❌ All agent slots (a–h) are already in use.
+❌ All workspace slots (a–h) are already in use.
 ```
 
-Remove an unused agent directory:
+Remove an unused workspace directory:
 
 ```bash
-rm -rf agents/sushigo-agent-h
-./scripts/create-agent.sh --branch=feature/my-new-feature
+rm -rf workspaces/sushigo-h
+./scripts/create-workspace.sh --branch=feature/my-new-feature
 ```
 
 ---
 
-## Starting agents
+## Starting workspaces
 
 ### Overmind not found
 
@@ -130,7 +130,7 @@ brew install overmind
 The sushigo clone is missing `Procfile.dev`. Make sure your branch is up to date with `main` (it was added in issue #144):
 
 ```bash
-cd agents/sushigo-agent-a
+cd workspaces/sushigo-a
 git fetch origin
 git merge origin/main
 ```
@@ -147,10 +147,10 @@ Another process is using the port. Find and stop it:
 lsof -ti :8001 | xargs kill -9
 ```
 
-Or check if another Overmind instance is already running for that agent:
+Or check if another Overmind instance is already running for that workspace:
 
 ```bash
-cd agents/sushigo-agent-a && overmind stop
+cd workspaces/sushigo-a && overmind stop
 ```
 
 ### Overmind already running
@@ -162,7 +162,7 @@ overmind: error: already running
 Stop the existing instance first:
 
 ```bash
-cd agents/sushigo-agent-a && overmind stop
+cd workspaces/sushigo-a && overmind stop
 ```
 
 ---
@@ -174,28 +174,28 @@ cd agents/sushigo-agent-a && overmind stop
 Check the Laravel log:
 
 ```bash
-tail -50 agents/sushigo-agent-a/code/api/storage/logs/laravel.log
+tail -50 workspaces/sushigo-a/code/api/storage/logs/laravel.log
 ```
 
 Common causes:
 
-- **Missing APP_KEY**: `cd agents/sushigo-agent-a/code/api && php artisan key:generate`
+- **Missing APP_KEY**: `cd workspaces/sushigo-a/code/api && php artisan key:generate`
 - **Database not migrated**: `php artisan migrate --force`
 - **Wrong DB credentials**: check `code/api/.env` — `DB_HOST` must be `127.0.0.1`, not `pgsql`
 
 ### Vite HMR not working
 
-The webapp is served from a different port than the API. Make sure `VITE_PORT` is set in the agent's `.env` and Vite started with `--host 0.0.0.0`:
+The webapp is served from a different port than the API. Make sure `VITE_PORT` is set in the workspace's `.env` and Vite started with `--host 0.0.0.0`:
 
 ```bash
-cat agents/sushigo-agent-a/.env
+cat workspaces/sushigo-a/.env
 # Should show: VITE_PORT=5171
 ```
 
 Restart Vite:
 
 ```bash
-cd agents/sushigo-agent-a && overmind restart vite
+cd workspaces/sushigo-a && overmind restart vite
 ```
 
 ### Frontend can't reach the API
@@ -215,14 +215,14 @@ VITE_API_URL=http://127.0.0.1:8001
 When switching to a branch with new migrations:
 
 ```bash
-cd agents/sushigo-agent-a/code/api
+cd workspaces/sushigo-a/code/api
 php artisan migrate --force
 ```
 
 If migrations conflict (e.g. schema mismatch from rebased history):
 
 ```bash
-./scripts/reset-agent-db.sh agent-a
+./scripts/reset-workspace-db.sh sushigo-a
 ```
 
 ### Seeder errors
@@ -230,7 +230,7 @@ If migrations conflict (e.g. schema mismatch from rebased history):
 If a seeder fails with a unique constraint violation:
 
 ```bash
-./scripts/reset-agent-db.sh agent-a
+./scripts/reset-workspace-db.sh sushigo-a
 ```
 
 Seeders use `updateOrCreate()` by convention — if yours doesn't, that's the bug.
@@ -239,30 +239,30 @@ Seeders use `updateOrCreate()` by convention — if yours doesn't, that's the bu
 
 ## Cleanup
 
-### Remove one agent completely
+### Remove one workspace completely
 
 ```bash
-rm -rf agents/sushigo-agent-c
-psql postgresql://admin:admin@127.0.0.1:5432/postgres -c "DROP DATABASE sushigo_agent_c;"
+rm -rf workspaces/sushigo-c
+psql postgresql://admin:admin@127.0.0.1:5432/postgres -c "DROP DATABASE sushigo_ws_c;"
 ```
 
-### Remove all agents
+### Remove all workspaces
 
 ```bash
-rm -rf agents/
+rm -rf workspaces/
 psql postgresql://admin:admin@127.0.0.1:5432/postgres <<'SQL'
-DROP DATABASE IF EXISTS sushigo_agent_a;
-DROP DATABASE IF EXISTS sushigo_agent_b;
-DROP DATABASE IF EXISTS sushigo_agent_c;
-DROP DATABASE IF EXISTS sushigo_agent_d;
+DROP DATABASE IF EXISTS sushigo_ws_a;
+DROP DATABASE IF EXISTS sushigo_ws_b;
+DROP DATABASE IF EXISTS sushigo_ws_c;
+DROP DATABASE IF EXISTS sushigo_ws_d;
 SQL
 ```
 
 ### Full reset (start from scratch)
 
 ```bash
-rm -rf agents/
+rm -rf workspaces/
 docker compose down -v
 docker compose up -d
-./scripts/setup.sh --agents=2
+./scripts/setup.sh --workspaces=2
 ```

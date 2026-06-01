@@ -37,13 +37,13 @@ The goal was not to replace the full stack — it's the reference. The goal was 
 ```
 sushigo-dev-lab approach:
 
-Shared (Docker, 1 instance each):        Per agent (local processes, lightweight):
-  PostgreSQL  ──┐                          agent-a:  php artisan serve + npm run dev
-  Redis       ──┼── one stack total        agent-b:  php artisan serve + npm run dev
-  Mailpit     ──┘                          agent-c:  php artisan serve + npm run dev
+Shared (Docker, 1 instance each):        Per workspace (local processes, lightweight):
+  PostgreSQL  ──┬                          sushigo-a:  php artisan serve + npm run dev
+  Redis       ──┼── one stack total        sushigo-b:  php artisan serve + npm run dev
+  Mailpit     ──┘                          sushigo-c:  php artisan serve + npm run dev
 
 No Nginx. No Apache. No browser in Docker. No VNC.
-Cypress runs locally against whichever agent is under test.
+Cypress runs locally against whichever workspace is under test.
 ```
 
 The result: multiple active branches, each with full API + frontend + isolated database, without the machine overheating.
@@ -58,34 +58,34 @@ sushigo-dev-lab/
 ├── docker-compose.yml        # One PostgreSQL, one Redis, one Mailpit
 │
 └── scripts/
-    ├── setup.sh              # Clone N agents, configure, install, migrate
-    ├── init.sh               # Start one or all agents
-    ├── create-agent.sh       # Add a new agent at any time
-    └── reset-agent-db.sh     # Wipe + re-seed one agent's database
+    ├── setup.sh              # Clone N workspaces, configure, install, migrate
+    ├── init.sh               # Start one or all workspaces
+    ├── create-workspace.sh   # Add a new workspace at any time
+    └── reset-workspace-db.sh # Wipe + re-seed one workspace's database
 ```
 
-Each agent is a full clone of SushiGo with its own:
+Each workspace is a full clone of SushiGo with its own:
 
-| | agent-a | agent-b | agent-c |
+| | sushigo-a | sushigo-b | sushigo-c |
 |---|---|---|---|
 | Git branch | any | any | any |
 | Laravel port | 8001 | 8002 | 8003 |
 | Vite port | 5171 | 5172 | 5173 |
-| Database | `sushigo_agent_a` | `sushigo_agent_b` | `sushigo_agent_c` |
+| Database | `sushigo_ws_a` | `sushigo_ws_b` | `sushigo_ws_c` |
 
 **The key principle:** SushiGo knows how to boot itself (`init-agent-workspace.sh` + `Procfile.dev` live in the SushiGo repo). This lab only orchestrates — it never hardcodes framework internals.
 
 ```
 scripts/init.sh
-  └── agents/sushigo-agent-a/init-agent-workspace.sh   ← self-contained boot
-  └── agents/sushigo-agent-b/init-agent-workspace.sh
-  └── agents/sushigo-agent-c/init-agent-workspace.sh
+  └── workspaces/sushigo-a/init-agent-workspace.sh   ← self-contained boot
+  └── workspaces/sushigo-b/init-agent-workspace.sh
+  └── workspaces/sushigo-c/init-agent-workspace.sh
         └── overmind start -f Procfile.dev
               ├── web:    php artisan serve --port=$APP_PORT
               └── vite:   npm run dev -- --port $VITE_PORT
 ```
 
-Process management uses **[Overmind](https://github.com/DarthSim/overmind)** — a Procfile supervisor that gives you colored logs, clean shutdown with Ctrl+C, and per-process restart (`overmind restart web`) without touching other agents.
+Process management uses **[Overmind](https://github.com/DarthSim/overmind)** — a Procfile supervisor that gives you colored logs, clean shutdown with Ctrl+C, and per-process restart (`overmind restart web`) without touching other workspaces.
 
 ---
 
@@ -112,7 +112,7 @@ The [SushiGo](https://github.com/pakodiazdev/sushigo) full stack was designed wi
 
 ```bash
 # That's it. Two fully configured, isolated environments in one command.
-./scripts/setup.sh --agents=2
+./scripts/setup.sh --workspaces=2
 ```
 
 This repo is a **complement**, not a replacement. The full sushigo stack remains the reference for CI, production-like testing, and team onboarding. The dev-lab is the lightweight alternative for day-to-day parallel development on Mac Intel hardware.
@@ -126,32 +126,32 @@ This repo is a **complement**, not a replacement. The full sushigo stack remains
 git clone https://github.com/pakodiazdev/sushigo-dev-lab.git
 cd sushigo-dev-lab
 
-# 2. Initialize 2 independent agents (shares Docker services, clones, configures, installs, migrates)
-./scripts/setup.sh --agents=2
+# 2. Initialize 2 independent workspaces (shares Docker services, clones, configures, installs, migrates)
+./scripts/setup.sh --workspaces=2
 
-# 3. Start an agent
-./scripts/init.sh agent-a
+# 3. Start a workspace
+./scripts/init.sh sushigo-a
 
 # 4. Open in browser
-open http://localhost:5171   # agent-a frontend
-open http://localhost:8001   # agent-a API
+open http://localhost:5171   # sushigo-a frontend
+open http://localhost:8001   # sushigo-a API
 ```
 
 After `setup.sh` you'll see:
 
 ```
-✅ Setup complete — 3 agents ready
+✅ Setup complete — 3 workspaces ready
 
-Agent     Backend                    Frontend                   Database
-agent-a   http://127.0.0.1:8001      http://localhost:5171       sushigo_agent_a
-agent-b   http://127.0.0.1:8002      http://localhost:5172       sushigo_agent_b
-agent-c   http://127.0.0.1:8003      http://localhost:5173       sushigo_agent_c
+Workspace     Backend                    Frontend                   Database
+sushigo-a     http://127.0.0.1:8001      http://localhost:5171       sushigo_ws_a
+sushigo-b     http://127.0.0.1:8002      http://localhost:5172       sushigo_ws_b
+sushigo-c     http://127.0.0.1:8003      http://localhost:5173       sushigo_ws_c
 
 Next steps:
-  Start all agents:        ./scripts/init.sh
-  Start one agent:         ./scripts/init.sh agent-a
-  Add another agent:       ./scripts/create-agent.sh
-  Reset agent database:    ./scripts/reset-agent-db.sh agent-a
+  Start all workspaces:      ./scripts/init.sh
+  Start one workspace:       ./scripts/init.sh sushigo-a
+  Add another workspace:     ./scripts/create-workspace.sh
+  Reset workspace database:  ./scripts/reset-workspace-db.sh sushigo-a
 ```
 
 ---
@@ -161,90 +161,90 @@ Next steps:
 ### `setup.sh` — full initialization
 
 ```bash
-./scripts/setup.sh --agents=3
-./scripts/setup.sh --agents=2 --repo=git@github.com:pakodiazdev/sushigo.git
-./scripts/setup.sh --agents=2 --branch=feature/065-my-feature
+./scripts/setup.sh --workspaces=3
+./scripts/setup.sh --workspaces=2 --repo=git@github.com:pakodiazdev/sushigo.git
+./scripts/setup.sh --workspaces=2 --branch=feature/065-my-feature
 ```
 
-Clones SushiGo N times on `main` by default (or `--branch` if specified), generates isolated `.env` files, creates one PostgreSQL database per agent, runs `composer install`, `npm install`, and `php artisan migrate --seed` for each. Idempotent — safe to re-run.
+Clones SushiGo N times on `main` by default (or `--branch` if specified), generates isolated `.env` files, creates one PostgreSQL database per workspace, runs `composer install`, `npm install`, and `php artisan migrate --seed` for each. Idempotent — safe to re-run.
 
 ---
 
-### `init.sh` — start agents
+### `init.sh` — start workspaces
 
 ```bash
-./scripts/init.sh             # start all agents (each in a background Overmind session)
-./scripts/init.sh agent-a     # start one agent (foreground, Overmind output)
+./scripts/init.sh               # start all workspaces (each in a background Overmind session)
+./scripts/init.sh sushigo-a    # start one workspace (foreground, Overmind output)
 ```
 
-Single-agent mode runs in the foreground — Overmind shows colored logs for each process. Ctrl+C cleanly stops both Laravel and Vite. All-agents mode starts each agent in the background; use `overmind connect web` inside the agent directory to inspect logs.
+Single-workspace mode runs in the foreground — Overmind shows colored logs for each process. Ctrl+C cleanly stops both Laravel and Vite. All-workspaces mode starts each workspace in the background; use `overmind connect web` inside the workspace directory to inspect logs.
 
 ---
 
-### `create-agent.sh` — add an agent
+### `create-workspace.sh` — add a workspace
 
 ```bash
-./scripts/create-agent.sh
-./scripts/create-agent.sh --branch=feature/066-other-feature
+./scripts/create-workspace.sh
+./scripts/create-workspace.sh --branch=feature/066-other-feature
 ```
 
-Auto-detects the next available letter and port. Clones sushigo on `main` by default, or on the specified branch. Creates the database and `.env` without touching existing agents.
+Auto-detects the next available letter and port. Clones sushigo on `main` by default, or on the specified branch. Creates the database and `.env` without touching existing workspaces.
 
 ---
 
-### `reset-agent-db.sh` — reset one database
+### `reset-workspace-db.sh` — reset one database
 
 ```bash
-./scripts/reset-agent-db.sh agent-b
+./scripts/reset-workspace-db.sh sushigo-b
 ```
 
-Drops `sushigo_agent_b`, recreates it, and runs `migrate --seed`. Other agents are untouched and keep running.
+Drops `sushigo_ws_b`, recreates it, and runs `migrate --seed`. Other workspaces are untouched and keep running.
 
 ---
 
 ### Makefile shortcuts
 
 ```bash
-make up                        # docker compose up -d
-make down                      # docker compose down
-make init                      # ./scripts/init.sh
-make init AGENT=agent-a        # ./scripts/init.sh agent-a
-make reset-db AGENT=agent-a    # ./scripts/reset-agent-db.sh agent-a
-make logs                      # docker compose logs -f
+make up                              # docker compose up -d
+make down                            # docker compose down
+make init                            # ./scripts/init.sh
+make init WORKSPACE=sushigo-a        # ./scripts/init.sh sushigo-a
+make reset-db WORKSPACE=sushigo-a    # ./scripts/reset-workspace-db.sh sushigo-a
+make logs                            # docker compose logs -f
 ```
 
 ---
 
 ## Day-to-day workflow
 
-**Switch branch in an agent:**
+**Switch branch in a workspace:**
 ```bash
-cd agents/sushigo-agent-b
+cd workspaces/sushigo-b
 git fetch origin
 git checkout feature/065-new-feature
 ```
 
 **Restart only Laravel (without stopping Vite):**
 ```bash
-# Inside the agent's Overmind session:
+# Inside the workspace's Overmind session:
 overmind restart web
 ```
 
-**Check Overmind process status inside an agent:**
+**Check Overmind process status inside a workspace:**
 ```bash
-cd agents/sushigo-agent-a
+cd workspaces/sushigo-a
 overmind status
 ```
 
-**Stop all processes for one agent:**
+**Stop all processes for one workspace:**
 ```bash
-cd agents/sushigo-agent-a
+cd workspaces/sushigo-a
 overmind stop
 ```
 
-**Run Cypress against a specific agent:**
+**Run Cypress against a specific workspace:**
 ```bash
-cd agents/sushigo-agent-a
+cd workspaces/sushigo-a
 CYPRESS_BASE_URL=http://localhost:5171 npx cypress open
 ```
 
@@ -254,11 +254,11 @@ CYPRESS_BASE_URL=http://localhost:5171 npx cypress open
 
 | Service | URL | Purpose |
 |---|---|---|
-| PostgreSQL | `localhost:5432` | Database for all agents |
+| PostgreSQL | `localhost:5432` | Database for all workspaces |
 | Redis | `localhost:6379` | Cache / queues |
 | Mailpit | http://localhost:8025 | Email UI (catches all outbound mail) |
 
-All agents connect to the same PostgreSQL instance but use isolated databases (`sushigo_agent_a`, `sushigo_agent_b`, ...). Redis is shared — cache keys are namespaced per agent via `CACHE_PREFIX` in each `.env`.
+All workspaces connect to the same PostgreSQL instance but use isolated databases (`sushigo_ws_a`, `sushigo_ws_b`, ...). Redis is shared — cache keys are namespaced per workspace via `CACHE_PREFIX` in each `.env`.
 
 ---
 

@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# reset-agent-db.sh — Drop, recreate and re-seed one agent's database
+# reset-workspace-db.sh — Drop, recreate and re-seed one workspace's database
 #
 # Usage:
-#   ./scripts/reset-agent-db.sh agent-a
-#   ./scripts/reset-agent-db.sh a
+#   ./scripts/reset-workspace-db.sh sushigo-a
+#   ./scripts/reset-workspace-db.sh a
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,33 +22,30 @@ export PGPASSWORD="${PG_PASS}"
 pg() { psql -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" "$@"; }
 
 if [ -z "$TARGET" ]; then
-  echo "Usage: $0 <agent-name>"
-  echo "Example: $0 agent-a"
+  echo "Usage: $0 <workspace-name>"
+  echo "Example: $0 sushigo-a"
   exit 1
 fi
 
-# Normalize: accept "a" or "agent-a"
-if [[ "$TARGET" != agent-* ]] && [[ "$TARGET" != sushigo-* ]]; then
-  TARGET="agent-${TARGET}"
-fi
+# Normalize: accept "a" or "sushigo-a" — extract the letter
 if [[ "$TARGET" == sushigo-* ]]; then
   TARGET="${TARGET#sushigo-}"
 fi
 
-# Validate: must be agent-[a-h]
-if ! [[ "$TARGET" =~ ^agent-[a-h]$ ]]; then
-  echo "❌ Invalid agent name: ${TARGET}"
-  echo "   Expected: agent-a through agent-h"
+# Validate: must be a single letter a–h
+if ! [[ "$TARGET" =~ ^[a-h]$ ]]; then
+  echo "❌ Invalid workspace name: ${TARGET}"
+  echo "   Expected: a through h, or sushigo-a through sushigo-h"
   exit 1
 fi
 
-AGENT_DIR="${ROOT_DIR}/agents/sushigo-${TARGET}"
-DB_NAME="sushigo_${TARGET//-/_}"
+WS_DIR="${ROOT_DIR}/workspaces/sushigo-${TARGET}"
+DB_NAME="sushigo_ws_${TARGET}"
 
-if [ ! -d "${AGENT_DIR}" ]; then
-  echo "❌ Agent not found: sushigo-${TARGET}"
-  echo "   Available agents:"
-  ls "${ROOT_DIR}/agents" 2>/dev/null | sed 's/^/     /' || echo "     (none)"
+if [ ! -d "${WS_DIR}" ]; then
+  echo "❌ Workspace not found: sushigo-${TARGET}"
+  echo "   Available workspaces:"
+  ls "${ROOT_DIR}/workspaces" 2>/dev/null | sed 's/^/     /' || echo "     (none)"
   exit 1
 fi
 
@@ -76,7 +73,7 @@ pg -d postgres -c "CREATE DATABASE ${DB_NAME};" &>/dev/null
 
 # ── Migrate and seed ─────────────────────────────────────────────────────────
 echo "  Migrating..."
-cd "${AGENT_DIR}/code/api"
+cd "${WS_DIR}/code/api"
 php artisan migrate --force --quiet
 
 echo "  Seeding..."

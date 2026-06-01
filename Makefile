@@ -1,9 +1,9 @@
-.PHONY: help doctor install setup up down logs init reset-db add-agent
+.PHONY: help doctor install setup up down logs init reset-db add-workspace
 
-AGENT  ?=
+WORKSPACE ?=
 PHP    ?=
 NODE   ?=
-AGENTS ?= 1
+WORKSPACES ?=
 BRANCH ?=
 REPO   ?=
 
@@ -11,20 +11,20 @@ help:
 	@echo ""
 	@echo "  sushigo-dev-lab commands"
 	@echo ""
-	@echo "  make setup                    Initialize lab with 1 agent"
-	@echo "  make setup AGENTS=3           Initialize lab with N agents"
-	@echo "  make setup AGENTS=2 BRANCH=feat/x  Init agents on a specific branch"
-	@echo "  make doctor                   Check all prerequisites"
-	@echo "  make install                  Install missing prerequisites via Homebrew"
-	@echo "  make install PHP=8.2 NODE=20  Install with specific versions"
-	@echo "  make up                       Start shared Docker services"
-	@echo "  make down                     Stop shared Docker services"
-	@echo "  make logs                     Follow Docker service logs"
-	@echo "  make init                     Start all agents"
-	@echo "  make init AGENT=agent-a       Start a specific agent (foreground)"
-	@echo "  make add-agent                Add a new agent clone"
-	@echo "  make add-agent BRANCH=feat/x  Add a new agent on a specific branch"
-	@echo "  make reset-db AGENT=agent-a   Wipe and re-seed one agent database"
+	@echo "  make setup                          Initialize lab with 1 workspace"
+	@echo "  make setup WORKSPACES=3             Initialize lab with N workspaces"
+	@echo "  make setup WORKSPACES=2 BRANCH=feat/x  Init workspaces on a specific branch"
+	@echo "  make doctor                         Check all prerequisites"
+	@echo "  make install                        Install missing prerequisites via Homebrew"
+	@echo "  make install PHP=8.2 NODE=20        Install with specific versions"
+	@echo "  make up                             Start Docker services + all workspaces (PHP + Vite)"
+	@echo "  make up WORKSPACES=2                Start Docker services + N workspaces"
+	@echo "  make down                           Stop all workspaces (Overmind) + Docker services"
+	@echo "  make logs                           Follow Docker service logs"
+	@echo "  make init WORKSPACE=sushigo-a       Start a specific workspace (foreground)"
+	@echo "  make add-workspace                  Add a new workspace clone"
+	@echo "  make add-workspace BRANCH=feat/x    Add a new workspace on a specific branch"
+	@echo "  make reset-db WORKSPACE=sushigo-a   Wipe and re-seed one workspace database"
 	@echo ""
 
 doctor:
@@ -32,7 +32,7 @@ doctor:
 
 setup:
 	@./scripts/setup.sh \
-		--agents=$(AGENTS) \
+		--workspaces=$(or $(WORKSPACES),1) \
 		$(if $(BRANCH),--branch=$(BRANCH),) \
 		$(if $(REPO),--repo=$(REPO),)
 
@@ -42,24 +42,29 @@ install:
 		$(if $(NODE),--node=$(NODE),)
 
 up:
-	docker compose up -d
-	@echo "✅ Shared services running (PostgreSQL, Redis, Mailpit)"
-	@echo "   Mailpit UI → http://localhost:8025"
+	@./scripts/init.sh $(if $(filter-out 0,$(WORKSPACES)),--count=$(WORKSPACES),)
 
 down:
-	docker compose down
+	@for dir in workspaces/*/; do \
+		if [ -S "$$dir/.overmind.sock" ]; then \
+			echo "⏹  Stopping workspace: $$dir"; \
+			(cd "$$dir" && overmind quit) 2>/dev/null || true; \
+		fi; \
+	done
+	docker compose down 2>/dev/null || true
+	@echo "✅ All services stopped"
 
 logs:
 	docker compose logs -f
 
 init:
-	@./scripts/init.sh $(AGENT)
+	@./scripts/init.sh $(WORKSPACE)
 
-add-agent:
-	@./scripts/create-agent.sh $(if $(BRANCH),--branch=$(BRANCH),)
+add-workspace:
+	@./scripts/create-workspace.sh $(if $(BRANCH),--branch=$(BRANCH),)
 
 reset-db:
-ifndef AGENT
-	$(error AGENT is required. Usage: make reset-db AGENT=agent-a)
+ifndef WORKSPACE
+	$(error WORKSPACE is required. Usage: make reset-db WORKSPACE=sushigo-a)
 endif
-	@./scripts/reset-agent-db.sh $(AGENT)
+	@./scripts/reset-workspace-db.sh $(WORKSPACE)
