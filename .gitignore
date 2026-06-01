@@ -1,4 +1,5 @@
-# Agent clones — created by setup.sh, never committed
+# Workspace clones — created by setup.sh, never committed
+workspaces/
 agents/
 
 # Environment overrides

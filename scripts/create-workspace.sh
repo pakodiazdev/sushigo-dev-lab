@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# create-agent.sh — Add a new agent clone to an existing dev-lab setup
+# create-workspace.sh — Add a new workspace clone to an existing dev-lab setup
 #
 # Usage:
-#   ./scripts/create-agent.sh
-#   ./scripts/create-agent.sh --branch=feature/066-my-feature
+#   ./scripts/create-workspace.sh
+#   ./scripts/create-workspace.sh --branch=feature/066-my-feature
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,8 +82,8 @@ fi
 
 # ── Clone ────────────────────────────────────────────────────────────────────
 echo "📦 Cloning sushigo on branch ${BRANCH}..."
-git clone --branch "${BRANCH}" "${REPO}" "${AGENT_DIR}"
-cd "${AGENT_DIR}"
+git clone --branch "${BRANCH}" "${REPO}" "${WS_DIR}"
+cd "${WS_DIR}"
 
 # ── Configure .env ───────────────────────────────────────────────────────────
 echo "⚙️  Configuring .env..."
@@ -93,18 +93,18 @@ sed -i '' "s|^DB_HOST=.*|DB_HOST=$(sed_esc "${PG_HOST}")|" code/api/.env
 sed -i '' "s|^DB_DATABASE=.*|DB_DATABASE=$(sed_esc "${DB_NAME}")|" code/api/.env
 sed -i '' "s|^DB_USERNAME=.*|DB_USERNAME=$(sed_esc "${PG_USER}")|" code/api/.env
 sed -i '' "s|^DB_PASSWORD=.*|DB_PASSWORD=$(sed_esc "${PG_PASS}")|" code/api/.env
-# Set a unique cache prefix to avoid Redis key collisions between agents
+# Set a unique cache/queue prefix to avoid Redis key collisions between workspaces
 if grep -q "^CACHE_PREFIX" code/api/.env; then
-  sed -i '' "s|^CACHE_PREFIX=.*|CACHE_PREFIX=agent_${LETTER}_|" code/api/.env
+  sed -i '' "s|^CACHE_PREFIX=.*|CACHE_PREFIX=ws_${LETTER}_|" code/api/.env
 else
-  echo "CACHE_PREFIX=agent_${LETTER}_" >> code/api/.env
+  echo "CACHE_PREFIX=ws_${LETTER}_" >> code/api/.env
 fi
 # Enable dev-debug login for local development
 sed -i '' "s|^LOGIN_WITH_DEVDEBUG=.*|LOGIN_WITH_DEVDEBUG=true|" code/api/.env
 sed -i '' "s|^DEV_LOGIN_ALLOWED_ENVIRONMENTS=.*|DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest,local|" code/api/.env
 # Enable clock simulation for local development
 sed -i '' "s|^CLOCK_SIMULATION_ENABLED=.*|CLOCK_SIMULATION_ENABLED=true|" code/api/.env
-# Allow the agent's Vite dev-server port in CORS (both localhost and 127.0.0.1)
+# Allow the workspace's Vite dev-server port in CORS (both localhost and 127.0.0.1)
 CORS_ORIGINS="http://localhost:${VITE_PORT},http://127.0.0.1:${VITE_PORT}"
 if grep -q "^CORS_ALLOWED_ORIGINS" code/api/.env; then
   sed -i '' "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}|" code/api/.env
@@ -113,8 +113,8 @@ else
 fi
 
 # Configure webapp .env (VITE_HMR_HOST intentionally unset → Vite auto-detects in local dev)
-AGENT_LABEL="[$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')]"
-cat > "${AGENT_DIR}/code/webapp/.env" <<EOF
+WS_LABEL="[$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')]"
+cat > "${WS_DIR}/code/webapp/.env" <<EOF
 VITE_API_URL=http://localhost:${APP_PORT}/api/v1
 VITE_APP_ENV=dev
 VITE_TIME_FORMAT=12
@@ -122,25 +122,25 @@ VITE_DEV_DEBUGGER_START_HIDDEN=false
 VITE_LOGIN_WITH_DEVDEBUG=true
 VITE_DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest
 VITE_ENV_BADGE=🟢 
-VITE_AGENT_LABEL=${AGENT_LABEL} 
+VITE_WS_LABEL=${WS_LABEL} 
 EOF
 
-cat > "${AGENT_DIR}/.env" <<EOF
+cat > "${WS_DIR}/.env" <<EOF
 APP_PORT=${APP_PORT}
 VITE_PORT=${VITE_PORT}
 DB_DATABASE=${DB_NAME}
-AGENT_ROOT=${AGENT_DIR}
+WORKSPACE_ROOT=${WS_DIR}
 EOF
 
 # Patch Procfile.dev with absolute paths so overmind works regardless of cwd
 # (overmind creates its own tmux server which does not inherit the caller's cwd)
-cat > "${AGENT_DIR}/Procfile.dev" <<'PROCFILE'
-web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${AGENT_ROOT}/code/api/public
-vite:   npm --prefix ${AGENT_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
+cat > "${WS_DIR}/Procfile.dev" <<'PROCFILE'
+web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
+vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
 PROCFILE
 
 # Mark Procfile.dev as skip-worktree: dev-lab owns it locally, git ignores changes
-git -C "${AGENT_DIR}" update-index --skip-worktree Procfile.dev
+git -C "${WS_DIR}" update-index --skip-worktree Procfile.dev
 
 # ── Create database ───────────────────────────────────────────────────────────
 echo "🗄️  Creating database ${DB_NAME}..."
@@ -154,11 +154,11 @@ fi
 
 # ── Install and bootstrap ─────────────────────────────────────────────────────
 echo "📚 Installing dependencies..."
-cd "${AGENT_DIR}/code/api" && composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php*
-cd "${AGENT_DIR}/code/webapp" && npm install --silent
+cd "${WS_DIR}/code/api" && composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php*
+cd "${WS_DIR}/code/webapp" && npm install --silent
 
 echo "🔑 Bootstrapping Laravel..."
-cd "${AGENT_DIR}/code/api"
+cd "${WS_DIR}/code/api"
 php artisan key:generate --ansi --quiet
 
 echo "🔐 Generating Passport OAuth keys..."
@@ -171,6 +171,6 @@ echo "📖 Generating Swagger docs..."
 php artisan l5-swagger:generate --quiet
 
 echo ""
-echo "✅ ${AGENT_NAME} is ready"
+echo "✅ ${WS_NAME} is ready"
 echo ""
-echo "  Start it:  ./scripts/init.sh ${AGENT_NAME#sushigo-}"
+echo "  Start it:  ./scripts/init.sh ${WS_NAME#sushigo-}"

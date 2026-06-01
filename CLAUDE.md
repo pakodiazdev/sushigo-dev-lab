@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo contains:
 - **Shared Docker services** (`docker-compose.yml`) — PostgreSQL, Redis, Mailpit
-- **Orchestration scripts** (`scripts/`) — setup, init, create-agent, reset-db
+- **Orchestration scripts** (`scripts/`) — setup, init, create-workspace, reset-db
 - **Documentation** (`docs/`) — architecture decisions, agent workflows, troubleshooting
 
 This repo does NOT run Laravel or Vite directly. Those live inside each agent clone (subdirectories under `agents/`, which are gitignored). The startup logic lives in `sushigo` itself (`init-agent-workspace.sh` + `Procfile.dev`).
@@ -25,18 +25,18 @@ This applies to: script comments, README, docs/, CLAUDE.md, variable names, erro
 ```
 sushigo-dev-lab/
 ├── docker-compose.yml          ← shared infrastructure services
-├── .gitignore                  ← agents/ is excluded here
+├── .gitignore                  ← workspaces/ is excluded here
 ├── Makefile                    ← developer shortcuts
 ├── scripts/
-│   ├── setup.sh                ← initialize N agents from scratch
-│   ├── create-agent.sh         ← add one more agent at any time
-│   ├── init.sh                 ← start one or all agents
-│   └── reset-agent-db.sh       ← wipe + remigrate one agent's DB
+│   ├── setup.sh                ← initialize N workspaces from scratch
+│   ├── create-workspace.sh     ← add one more workspace at any time
+│   ├── init.sh                 ← start one or all workspaces
+│   └── reset-workspace-db.sh   ← wipe + remigrate one workspace's DB
 ├── docs/
 │   ├── architecture.md
-│   ├── agents.md
+│   ├── workspaces.md
 │   └── troubleshooting.md
-├── agents/                     ← gitignored — created by setup.sh
+├── workspaces/                 ← gitignored — created by setup.sh
 └── README.md
 ```
 
@@ -49,26 +49,26 @@ docker compose up -d
 # Stop shared services
 docker compose down
 
-# Initialize the lab (3 agents)
-./scripts/setup.sh --agents=3
+# Initialize the lab (3 workspaces)
+./scripts/setup.sh --workspaces=3
 
-# Start a specific agent
-./scripts/init.sh agent-a
+# Start a specific workspace
+./scripts/init.sh sushigo-a
 
-# Start all agents
+# Start all workspaces
 ./scripts/init.sh
 
-# Add a new agent
-./scripts/create-agent.sh
+# Add a new workspace
+./scripts/create-workspace.sh
 
-# Reset one agent's database
-./scripts/reset-agent-db.sh agent-a
+# Reset one workspace's database
+./scripts/reset-workspace-db.sh sushigo-a
 
 # Makefile shortcuts
 make up
 make down
-make init AGENT=agent-a
-make reset-db AGENT=agent-a
+make init WORKSPACE=sushigo-a
+make reset-db WORKSPACE=sushigo-a
 ```
 
 ## Conventions
@@ -263,7 +263,7 @@ The `init-agent-workspace.sh` and `Procfile.dev` that each agent uses live in `p
 
 - `docker-compose.yml` — shared services definition
 - `scripts/setup.sh` — full lab initialization
-- `scripts/init.sh` — agent startup orchestrator
+- `scripts/init.sh` — workspace startup orchestrator
 - `Makefile` — developer shortcuts
 - `docs/architecture.md` — design decisions and rationale
 - `docs/troubleshooting.md` — common errors and fixes

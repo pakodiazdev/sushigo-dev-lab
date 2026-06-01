@@ -2,18 +2,18 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# setup.sh — Initialize the sushigo-dev-lab with N independent agent clones
+# setup.sh — Initialize the sushigo-dev-lab with N independent workspace clones
 #
 # Usage:
-#   ./scripts/setup.sh --agents=3
-#   ./scripts/setup.sh --agents=2 --repo=git@github.com:pakodiazdev/sushigo.git
-#   ./scripts/setup.sh --agents=2 --branch=feature/065-my-feature
+#   ./scripts/setup.sh --workspaces=3
+#   ./scripts/setup.sh --workspaces=2 --repo=git@github.com:pakodiazdev/sushigo.git
+#   ./scripts/setup.sh --workspaces=2 --branch=feature/065-my-feature
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-AGENTS=1
+WORKSPACES=1
 BRANCH="main"
 REPO="https://github.com/pakodiazdev/sushigo.git"
 LETTERS=(a b c d e f g h)
@@ -30,15 +30,15 @@ sed_esc() { printf '%s' "$1" | sed 's/\\/\\\\/g' | sed 's/[&|]/\\&/g'; }
 # ── Argument parsing ────────────────────────────────────────────────────────
 for arg in "$@"; do
   case $arg in
-    --agents=*) AGENTS="${arg#*=}" ;;
+    --workspaces=*) WORKSPACES="${arg#*=}" ;;
     --branch=*) BRANCH="${arg#*=}" ;;
     --repo=*)   REPO="${arg#*=}" ;;
     *) echo "Unknown argument: $arg"; exit 1 ;;
   esac
 done
 
-if ! [[ "$AGENTS" =~ ^[1-8]$ ]]; then
-  echo "❌ --agents must be between 1 and 8 (got: ${AGENTS})"
+if ! [[ "$WORKSPACES" =~ ^[1-8]$ ]]; then
+  echo "❌ --workspaces must be between 1 and 8 (got: ${WORKSPACES})"
   exit 1
 fi
 
@@ -81,80 +81,80 @@ until docker compose -f "${ROOT_DIR}/docker-compose.yml" exec -T db \
 done
 echo "✅ PostgreSQL ready"
 
-# ── Agent creation loop ─────────────────────────────────────────────────────
-mkdir -p "${ROOT_DIR}/agents"
+# ── Workspace creation loop ─────────────────────────────────────────────────
+mkdir -p "${ROOT_DIR}/workspaces"
 
 BASE_API_PORT=8001
 BASE_VITE_PORT=5171
 
-for i in $(seq 0 $((AGENTS - 1))); do
+for i in $(seq 0 $((WORKSPACES - 1))); do
   LETTER="${LETTERS[$i]}"
-  AGENT_NAME="sushigo-agent-${LETTER}"
-  AGENT_DIR="${ROOT_DIR}/agents/${AGENT_NAME}"
-  DB_NAME="sushigo_agent_${LETTER}"
+  WS_NAME="sushigo-${LETTER}"
+  WS_DIR="${ROOT_DIR}/workspaces/${WS_NAME}"
+  DB_NAME="sushigo_ws_${LETTER}"
   APP_PORT=$((BASE_API_PORT + i))
   VITE_PORT=$((BASE_VITE_PORT + i))
 
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  Setting up agent-${LETTER} (port ${APP_PORT} / ${VITE_PORT})"
+  echo "  Setting up sushigo-${LETTER} (port ${APP_PORT} / ${VITE_PORT})"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  if [ -d "${AGENT_DIR}" ]; then
-    if [ ! -f "${AGENT_DIR}/code/api/.env" ]; then
+  if [ -d "${WS_DIR}" ]; then
+    if [ ! -f "${WS_DIR}/code/api/.env" ]; then
       # Partial setup: dir exists but .env is missing — previous run failed mid-way.
       # Reuse the existing clone and continue with configuration (skip clone step).
       echo "  ⚠️  Partial setup detected (code/api/.env missing) — resuming configuration"
-      cd "${AGENT_DIR}"
+      cd "${WS_DIR}"
       # fall through to configure .env, install deps, bootstrap Laravel
     else
       echo "  ⚠️  Directory exists — updating branch and dependencies"
-      cd "${AGENT_DIR}"
+      cd "${WS_DIR}"
       git fetch origin
 
       # Use --ff-only to avoid silently discarding local commits
       if git rev-parse "origin/${BRANCH}" &>/dev/null 2>&1; then
         git checkout "${BRANCH}" 2>/dev/null || git checkout -b "${BRANCH}" "origin/${BRANCH}"
         if ! git pull --ff-only origin "${BRANCH}" 2>/dev/null; then
-          echo "  ⚠️  Cannot fast-forward agent-${LETTER} (local commits present) — skipping git update"
+          echo "  ⚠️  Cannot fast-forward sushigo-${LETTER} (local commits present) — skipping git update"
         fi
       else
         echo "  ℹ️  Branch ${BRANCH} not found on remote — staying on current branch"
       fi
 
       echo "  📚 Updating PHP dependencies..."
-      cd "${AGENT_DIR}/code/api"
+      cd "${WS_DIR}/code/api"
       composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php*
 
       echo "  📦 Updating Node dependencies..."
-      cd "${AGENT_DIR}/code/webapp"
+      cd "${WS_DIR}/code/webapp"
       npm install --silent
 
       echo "  🛠  Running migrations (schema may have changed)..."
-      cd "${AGENT_DIR}/code/api"
+      cd "${WS_DIR}/code/api"
       php artisan migrate --force --quiet
 
       echo "  📖 Generating Swagger docs..."
       php artisan l5-swagger:generate --quiet
-      # Ensure AGENT_ROOT is present and Procfile.dev uses absolute paths
-      if ! grep -q "^AGENT_ROOT=" "${AGENT_DIR}/.env"; then
-        echo "AGENT_ROOT=${AGENT_DIR}" >> "${AGENT_DIR}/.env"
+      # Ensure WORKSPACE_ROOT is present and Procfile.dev uses absolute paths
+      if ! grep -q "^WORKSPACE_ROOT=" "${WS_DIR}/.env"; then
+        echo "WORKSPACE_ROOT=${WS_DIR}" >> "${WS_DIR}/.env"
       fi
-      cat > "${AGENT_DIR}/Procfile.dev" <<'PROCFILE'
-web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${AGENT_ROOT}/code/api/public
-vite:   npm --prefix ${AGENT_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
+      cat > "${WS_DIR}/Procfile.dev" <<'PROCFILE'
+web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
+vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
 PROCFILE
-      git -C "${AGENT_DIR}" update-index --skip-worktree Procfile.dev
-      echo "  ✅ agent-${LETTER} updated"
+      git -C "${WS_DIR}" update-index --skip-worktree Procfile.dev
+      echo "  ✅ sushigo-${LETTER} updated"
       continue
     fi
   fi
 
-  if [ ! -d "${AGENT_DIR}" ]; then
+  if [ ! -d "${WS_DIR}" ]; then
     echo "  📦 Cloning sushigo on branch ${BRANCH}..."
-    git clone --branch "${BRANCH}" "${REPO}" "${AGENT_DIR}"
+    git clone --branch "${BRANCH}" "${REPO}" "${WS_DIR}"
   fi
-  cd "${AGENT_DIR}"
+  cd "${WS_DIR}"
 
   # Configure .env
   echo "  ⚙️  Configuring .env..."
@@ -164,18 +164,18 @@ PROCFILE
   sed -i '' "s|^DB_DATABASE=.*|DB_DATABASE=$(sed_esc "${DB_NAME}")|" code/api/.env
   sed -i '' "s|^DB_USERNAME=.*|DB_USERNAME=$(sed_esc "${PG_USER}")|" code/api/.env
   sed -i '' "s|^DB_PASSWORD=.*|DB_PASSWORD=$(sed_esc "${PG_PASS}")|" code/api/.env
-  # Set a unique cache prefix to avoid Redis key collisions between agents
+  # Set a unique cache/queue prefix to avoid Redis key collisions between workspaces
   if grep -q "^CACHE_PREFIX" code/api/.env; then
-    sed -i '' "s|^CACHE_PREFIX=.*|CACHE_PREFIX=agent_${LETTER}_|" code/api/.env
+    sed -i '' "s|^CACHE_PREFIX=.*|CACHE_PREFIX=ws_${LETTER}_|" code/api/.env
   else
-    echo "CACHE_PREFIX=agent_${LETTER}_" >> code/api/.env
+    echo "CACHE_PREFIX=ws_${LETTER}_" >> code/api/.env
   fi
   # Enable dev-debug login for local development
   sed -i '' "s|^LOGIN_WITH_DEVDEBUG=.*|LOGIN_WITH_DEVDEBUG=true|" code/api/.env
   sed -i '' "s|^DEV_LOGIN_ALLOWED_ENVIRONMENTS=.*|DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest,local|" code/api/.env
   # Enable clock simulation for local development
   sed -i '' "s|^CLOCK_SIMULATION_ENABLED=.*|CLOCK_SIMULATION_ENABLED=true|" code/api/.env
-  # Allow the agent's Vite dev-server port in CORS (both localhost and 127.0.0.1)
+  # Allow the workspace's Vite dev-server port in CORS (both localhost and 127.0.0.1)
   CORS_ORIGINS="http://localhost:${VITE_PORT},http://127.0.0.1:${VITE_PORT}"
   if grep -q "^CORS_ALLOWED_ORIGINS" code/api/.env; then
     sed -i '' "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}|" code/api/.env
@@ -184,8 +184,8 @@ PROCFILE
   fi
 
   # Configure webapp .env (VITE_HMR_HOST intentionally unset → Vite auto-detects in local dev)
-  AGENT_LABEL="[$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')]"
-  cat > "${AGENT_DIR}/code/webapp/.env" <<EOF
+  WS_LABEL="[$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')]"
+  cat > "${WS_DIR}/code/webapp/.env" <<EOF
 VITE_API_URL=http://localhost:${APP_PORT}/api/v1
 VITE_APP_ENV=dev
 VITE_TIME_FORMAT=12
@@ -193,25 +193,25 @@ VITE_DEV_DEBUGGER_START_HIDDEN=false
 VITE_LOGIN_WITH_DEVDEBUG=true
 VITE_DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest
 VITE_ENV_BADGE=🟢 
-VITE_AGENT_LABEL=${AGENT_LABEL} 
+VITE_WS_LABEL=${WS_LABEL} 
 EOF
 
-  cat > "${AGENT_DIR}/.env" <<EOF
+  cat > "${WS_DIR}/.env" <<EOF
 APP_PORT=${APP_PORT}
 VITE_PORT=${VITE_PORT}
 DB_DATABASE=${DB_NAME}
-AGENT_ROOT=${AGENT_DIR}
+WORKSPACE_ROOT=${WS_DIR}
 EOF
 
   # Patch Procfile.dev with absolute paths so overmind works regardless of cwd
   # (overmind creates its own tmux server which does not inherit the caller's cwd)
-  cat > "${AGENT_DIR}/Procfile.dev" <<'PROCFILE'
-web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${AGENT_ROOT}/code/api/public
-vite:   npm --prefix ${AGENT_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
+  cat > "${WS_DIR}/Procfile.dev" <<'PROCFILE'
+web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
+vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
 PROCFILE
 
   # Mark Procfile.dev as skip-worktree: dev-lab owns it locally, git ignores changes
-  git -C "${AGENT_DIR}" update-index --skip-worktree Procfile.dev
+  git -C "${WS_DIR}" update-index --skip-worktree Procfile.dev
 
   # Create database
   echo "  🗄️  Creating database ${DB_NAME}..."
@@ -225,16 +225,16 @@ PROCFILE
 
   # Install dependencies
   echo "  📚 Installing PHP dependencies..."
-  cd "${AGENT_DIR}/code/api"
+  cd "${WS_DIR}/code/api"
   composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php*
 
   echo "  📦 Installing Node dependencies..."
-  cd "${AGENT_DIR}/code/webapp"
+  cd "${WS_DIR}/code/webapp"
   npm install --silent
 
   # Bootstrap Laravel
   echo "  🔑 Generating app key..."
-  cd "${AGENT_DIR}/code/api"
+  cd "${WS_DIR}/code/api"
   php artisan key:generate --ansi --quiet
 
   echo "  � Generating Passport OAuth keys..."
@@ -247,32 +247,32 @@ PROCFILE
   echo "  📖 Generating Swagger docs..."
   php artisan l5-swagger:generate --quiet
 
-  echo "  ✅ agent-${LETTER} ready"
+  echo "  ✅ sushigo-${LETTER} ready"
 done
 
 # ── Summary ─────────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  ✅ Setup complete — ${AGENTS} agent(s) ready"
+echo "  ✅ Setup complete — ${WORKSPACES} workspace(s) ready"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-printf "  %-10s %-35s %-35s %s\n" "Agent" "Backend" "Frontend" "Database"
-printf "  %-10s %-35s %-35s %s\n" "─────" "───────" "────────" "────────"
+printf "  %-12s %-35s %-35s %s\n" "Workspace" "Backend" "Frontend" "Database"
+printf "  %-12s %-35s %-35s %s\n" "─────────" "───────" "────────" "────────"
 
-for i in $(seq 0 $((AGENTS - 1))); do
+for i in $(seq 0 $((WORKSPACES - 1))); do
   LETTER="${LETTERS[$i]}"
   APP_PORT=$((BASE_API_PORT + i))
   VITE_PORT=$((BASE_VITE_PORT + i))
-  printf "  %-10s %-35s %-35s %s\n" \
-    "agent-${LETTER}" \
+  printf "  %-12s %-35s %-35s %s\n" \
+    "sushigo-${LETTER}" \
     "http://127.0.0.1:${APP_PORT}" \
     "http://localhost:${VITE_PORT}" \
-    "sushigo_agent_${LETTER}"
+    "sushigo_ws_${LETTER}"
 done
 
 echo ""
 echo "  Next steps:"
-echo "    Start one agent:   ./scripts/init.sh agent-a"
-echo "    Start all agents:  ./scripts/init.sh"
-echo "    Add another agent: ./scripts/create-agent.sh"
+echo "    Start one workspace:   ./scripts/init.sh sushigo-a"
+echo "    Start all workspaces:  ./scripts/init.sh"
+echo "    Add another workspace: ./scripts/create-workspace.sh"
 echo ""
