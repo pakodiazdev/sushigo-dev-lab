@@ -71,22 +71,22 @@ if [ -n "$TARGET" ]; then
     TARGET="sushigo-${TARGET}"
   fi
 
-  AGENT_DIR="${AGENTS_DIR}/${TARGET}"
+  WS_DIR="${WS_DIR_BASE}/${TARGET}"
 
-  if [ ! -d "${AGENT_DIR}" ]; then
-    echo "❌ Agent not found: ${TARGET}"
-    echo "   Available agents:"
-    ls "${AGENTS_DIR}" 2>/dev/null | sed 's/^/     /' || echo "     (none)"
+  if [ ! -d "${WS_DIR}" ]; then
+    echo "❌ Workspace not found: ${TARGET}"
+    echo "   Available workspaces:"
+    ls "${WS_DIR_BASE}" 2>/dev/null | sed 's/^/     /' || echo "     (none)"
     exit 1
   fi
 
   echo "🚀 Starting ${TARGET}..."
   set -o allexport
-  source "${AGENT_DIR}/.env" 2>/dev/null || true
+  source "${WS_DIR}/.env" 2>/dev/null || true
   set +o allexport
-  write_procfile "${AGENT_DIR}"
-  cd "${AGENT_DIR}"
-  exec overmind start -f "${AGENT_DIR}/Procfile.dev"
+  write_procfile "${WS_DIR}"
+  cd "${WS_DIR}"
+  exec overmind start -f "${WS_DIR}/Procfile.dev"
 fi
 
 # ── All workspaces (background) ────────────────────────────────────────────

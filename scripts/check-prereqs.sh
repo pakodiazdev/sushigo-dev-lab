@@ -187,7 +187,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 if [ "$FAIL" -eq 0 ]; then
   echo "  ✅  All prerequisites satisfied (${PASS} checks passed)"
   echo ""
-  echo "  Ready to run:  ./scripts/setup.sh --agents=2"
+  echo "  Ready to run:  ./scripts/setup.sh --workspaces=2"
 else
   echo "  ❌  ${FAIL} prerequisite(s) missing — install them before running setup.sh"
   echo "     ${PASS} check(s) passed"

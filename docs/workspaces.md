@@ -148,7 +148,7 @@ php artisan migrate
 make reset-db WORKSPACE=sushigo-a
 ```
 
-This drops and recreates the database, then reruns all migrations and seeders. The agent process does not need to be stopped, but in-flight requests will see transient DB errors during the reset. If the server fails to reconnect on the next request, restart the agent with `overmind restart web`.
+This drops and recreates the database, then reruns all migrations and seeders. The agent process does not need to be stopped, but in-flight requests will see transient DB errors during the reset. If the server fails to reconnect on the next request, restart the workspace with `overmind restart web`.
 
 ## Shared resources
 

@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repo contains:
 - **Shared Docker services** (`docker-compose.yml`) — PostgreSQL, Redis, Mailpit
 - **Orchestration scripts** (`scripts/`) — setup, init, create-workspace, reset-db
-- **Documentation** (`docs/`) — architecture decisions, agent workflows, troubleshooting
+- **Documentation** (`docs/`) — architecture decisions, workspace workflows, troubleshooting
 
 This repo does NOT run Laravel or Vite directly. Those live inside each agent clone (subdirectories under `agents/`, which are gitignored). The startup logic lives in `sushigo` itself (`init-agent-workspace.sh` + `Procfile.dev`).
 

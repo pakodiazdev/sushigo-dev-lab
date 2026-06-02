@@ -59,7 +59,7 @@ APP_PORT=$((BASE_API_PORT + NEXT_INDEX))
 VITE_PORT=$((BASE_VITE_PORT + NEXT_INDEX))
 
 echo ""
-echo "➕ Creating ${AGENT_NAME} (branch: ${BRANCH})"
+echo "➕ Creating ${WS_NAME} (branch: ${BRANCH})"
 echo "   Backend  → http://127.0.0.1:${APP_PORT}"
 echo "   Frontend → http://localhost:${VITE_PORT}"
 echo "   Database → ${DB_NAME}"
@@ -154,7 +154,7 @@ fi
 
 # ── Install and bootstrap ─────────────────────────────────────────────────────
 echo "📚 Installing dependencies..."
-cd "${WS_DIR}/code/api" && composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php*
+cd "${WS_DIR}/code/api" && composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php
 cd "${WS_DIR}/code/webapp" && npm install --silent
 
 echo "🔑 Bootstrapping Laravel..."
@@ -173,4 +173,4 @@ php artisan l5-swagger:generate --quiet
 echo ""
 echo "✅ ${WS_NAME} is ready"
 echo ""
-echo "  Start it:  ./scripts/init.sh ${WS_NAME#sushigo-}"
+echo "  Start it:  ./scripts/init.sh ${WS_NAME}"
