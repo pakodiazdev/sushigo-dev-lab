@@ -124,7 +124,7 @@ for i in $(seq 0 $((WORKSPACES - 1))); do
 
       echo "  📚 Updating PHP dependencies..."
       cd "${WS_DIR}/code/api"
-      composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php*
+      composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php
 
       echo "  📦 Updating Node dependencies..."
       cd "${WS_DIR}/code/webapp"
@@ -144,7 +144,8 @@ for i in $(seq 0 $((WORKSPACES - 1))); do
 web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
 vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
 PROCFILE
-      git -C "${WS_DIR}" update-index --skip-worktree Procfile.dev
+      git -C "${WS_DIR}" ls-files --error-unmatch Procfile.dev &>/dev/null 2>&1 && \
+        git -C "${WS_DIR}" update-index --skip-worktree Procfile.dev || true
       echo "  ✅ sushigo-${LETTER} updated"
       continue
     fi
@@ -211,7 +212,8 @@ vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT
 PROCFILE
 
   # Mark Procfile.dev as skip-worktree: dev-lab owns it locally, git ignores changes
-  git -C "${WS_DIR}" update-index --skip-worktree Procfile.dev
+  git -C "${WS_DIR}" ls-files --error-unmatch Procfile.dev &>/dev/null 2>&1 && \
+    git -C "${WS_DIR}" update-index --skip-worktree Procfile.dev || true
 
   # Create database
   echo "  🗄️  Creating database ${DB_NAME}..."
@@ -226,7 +228,7 @@ PROCFILE
   # Install dependencies
   echo "  📚 Installing PHP dependencies..."
   cd "${WS_DIR}/code/api"
-  composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php*
+  composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php
 
   echo "  📦 Installing Node dependencies..."
   cd "${WS_DIR}/code/webapp"
@@ -237,10 +239,10 @@ PROCFILE
   cd "${WS_DIR}/code/api"
   php artisan key:generate --ansi --quiet
 
-  echo "  � Generating Passport OAuth keys..."
+  echo "  🔐 Generating Passport OAuth keys..."
   php artisan passport:keys --force --quiet
 
-  echo "  �🛠  Running migrations and seeders..."
+  echo "  🛠  Running migrations and seeders..."
   php artisan migrate --force --quiet
   php artisan db:seed --force --quiet
 

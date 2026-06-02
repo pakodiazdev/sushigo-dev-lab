@@ -64,7 +64,7 @@ add-workspace:
 	@./scripts/create-workspace.sh $(if $(BRANCH),--branch=$(BRANCH),)
 
 reset-db:
-ifndef WORKSPACE
+ifeq ($(strip $(WORKSPACE)),)
 	$(error WORKSPACE is required. Usage: make reset-db WORKSPACE=sushigo-a)
 endif
 	@./scripts/reset-workspace-db.sh $(WORKSPACE)

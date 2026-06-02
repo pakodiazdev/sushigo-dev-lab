@@ -56,7 +56,7 @@ Ports are auto-assigned sequentially by `create-workspace.sh`. No manual configu
 
 ## Process management: Overmind
 
-Each agent's processes are managed by [Overmind](https://github.com/DarthSim/overmind), a Procfile supervisor written in Go.
+Each workspace's processes are managed by [Overmind](https://github.com/DarthSim/overmind), a Procfile supervisor written in Go.
 
 ```
 Procfile.dev (in the sushigo repo)
