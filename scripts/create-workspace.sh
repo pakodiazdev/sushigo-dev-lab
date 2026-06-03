@@ -15,8 +15,11 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BRANCH="main"
 REPO="https://github.com/pakodiazdev/sushigo.git"
 LETTERS=(a b c d e f g h)
-BASE_API_PORT=8001
-BASE_VITE_PORT=5171
+
+# Load tools.env (versions + port config)
+if [ -f "${ROOT_DIR}/tools.env" ]; then
+  source "${ROOT_DIR}/tools.env"
+fi
 
 PG_USER="${POSTGRES_USER:-admin}"
 PG_PASS="${POSTGRES_PASSWORD:-admin}"
@@ -35,28 +38,31 @@ for arg in "$@"; do
 done
 
 # ── Detect next available slot ──────────────────────────────────────────────
-mkdir -p "${ROOT_DIR}/agents"
+mkdir -p "${ROOT_DIR}/workspaces"
 
 NEXT_INDEX=-1
 for i in "${!LETTERS[@]}"; do
   LETTER="${LETTERS[$i]}"
-  if [ ! -d "${ROOT_DIR}/agents/sushigo-agent-${LETTER}" ]; then
+  if [ ! -d "${ROOT_DIR}/workspaces/sushigo-${LETTER}" ]; then
     NEXT_INDEX=$i
     break
   fi
 done
 
 if [ "$NEXT_INDEX" -eq -1 ]; then
-  echo "❌ All agent slots (a–h) are already in use."
+  echo "❌ All workspace slots (a–h) are already in use."
   exit 1
 fi
 
 LETTER="${LETTERS[$NEXT_INDEX]}"
-AGENT_NAME="sushigo-agent-${LETTER}"
-AGENT_DIR="${ROOT_DIR}/agents/${AGENT_NAME}"
-DB_NAME="sushigo_agent_${LETTER}"
-APP_PORT=$((BASE_API_PORT + NEXT_INDEX))
-VITE_PORT=$((BASE_VITE_PORT + NEXT_INDEX))
+WS_NAME="sushigo-${LETTER}"
+WS_DIR="${ROOT_DIR}/workspaces/${WS_NAME}"
+DB_NAME="sushigo_ws_${LETTER}"
+LETTER_UPPER="$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')"
+_slot_api_var="API_PORT_${LETTER_UPPER}"
+_slot_vite_var="VITE_PORT_${LETTER_UPPER}"
+APP_PORT="${!_slot_api_var:-$((8001 + NEXT_INDEX))}"
+VITE_PORT="${!_slot_vite_var:-$((5171 + NEXT_INDEX))}"
 
 echo ""
 echo "➕ Creating ${WS_NAME} (branch: ${BRANCH})"

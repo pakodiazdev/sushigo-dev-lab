@@ -13,6 +13,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Load tools.env (versions + port config)
+if [ -f "${ROOT_DIR}/tools.env" ]; then
+  source "${ROOT_DIR}/tools.env"
+fi
+
 WORKSPACES=1
 BRANCH="main"
 REPO="https://github.com/pakodiazdev/sushigo.git"
@@ -84,16 +89,16 @@ echo "✅ PostgreSQL ready"
 # ── Workspace creation loop ─────────────────────────────────────────────────
 mkdir -p "${ROOT_DIR}/workspaces"
 
-BASE_API_PORT=8001
-BASE_VITE_PORT=5171
-
 for i in $(seq 0 $((WORKSPACES - 1))); do
   LETTER="${LETTERS[$i]}"
   WS_NAME="sushigo-${LETTER}"
   WS_DIR="${ROOT_DIR}/workspaces/${WS_NAME}"
   DB_NAME="sushigo_ws_${LETTER}"
-  APP_PORT=$((BASE_API_PORT + i))
-  VITE_PORT=$((BASE_VITE_PORT + i))
+  LETTER_UPPER="$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')"
+  _slot_api_var="API_PORT_${LETTER_UPPER}"
+  _slot_vite_var="VITE_PORT_${LETTER_UPPER}"
+  APP_PORT="${!_slot_api_var:-$((8001 + i))}"
+  VITE_PORT="${!_slot_vite_var:-$((5171 + i))}"
 
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -263,8 +268,11 @@ printf "  %-12s %-35s %-35s %s\n" "─────────" "─────
 
 for i in $(seq 0 $((WORKSPACES - 1))); do
   LETTER="${LETTERS[$i]}"
-  APP_PORT=$((BASE_API_PORT + i))
-  VITE_PORT=$((BASE_VITE_PORT + i))
+  LETTER_UPPER="$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')"
+  _slot_api_var="API_PORT_${LETTER_UPPER}"
+  _slot_vite_var="VITE_PORT_${LETTER_UPPER}"
+  APP_PORT="${!_slot_api_var:-$((8001 + i))}"
+  VITE_PORT="${!_slot_vite_var:-$((5171 + i))}"
   printf "  %-12s %-35s %-35s %s\n" \
     "sushigo-${LETTER}" \
     "http://127.0.0.1:${APP_PORT}" \
