@@ -5,6 +5,7 @@ agents/
 # Environment overrides
 .env
 .env.local
+tools.env
 
 # OS
 .DS_Store
