@@ -47,12 +47,13 @@ PROCFILE
 }
 
 # ── Shared helper: inject agent label into webapp .env ───────────────────────
-# Usage: inject_branch_env <ws_dir>
-# Updates VITE_AGENT_LABEL ([A:#065]) in code/webapp/.env.
+# Usage: inject_agent_label <ws_dir>
+# Reads the current git branch, extracts the issue number, and writes
+# VITE_AGENT_LABEL ([A:#065]) to code/webapp/.env.
 # Safe no-op if webapp/.env does not exist.
-# Note: VITE_GIT_BRANCH was removed — branch is read live from .git/HEAD
-# via the virtual:git-branch Vite plugin (reacts to git checkout without restart).
-inject_branch_env() {
+# Note: branch info is no longer written as VITE_GIT_BRANCH — the webapp reads
+# the branch live from .git/HEAD via the virtual:git-branch Vite plugin.
+inject_agent_label() {
   local ws_dir="$1"
   local webapp_env="${ws_dir}/code/webapp/.env"
   [ -f "${webapp_env}" ] || return 0
@@ -110,7 +111,7 @@ if [ -n "$TARGET" ]; then
   fi
 
   echo "🚀 Starting ${TARGET}..."
-  inject_branch_env "${WS_DIR}"
+  inject_agent_label "${WS_DIR}"
   set -o allexport
   source "${WS_DIR}/.env" 2>/dev/null || true
   set +o allexport
@@ -155,7 +156,7 @@ for WS_DIR in "${WS_DIRS[@]}"; do
   fi
 
   source "${WS_DIR}/.env" 2>/dev/null || true
-  inject_branch_env "${WS_DIR}"
+  inject_agent_label "${WS_DIR}"
 
   echo "  ▶ ${WS_NAME}"
   echo "    Backend  → http://127.0.0.1:${APP_PORT:-?}"

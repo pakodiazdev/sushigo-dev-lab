@@ -18,13 +18,14 @@ The label needs to be accurate at every startup, without requiring any manual `.
 
 ## Decision
 
-`init.sh` reads the current git branch of each workspace on every startup and injects two variables into `code/webapp/.env`:
+`init.sh` reads the current git branch of each workspace on every startup and injects the agent label into `code/webapp/.env`:
 
 - `VITE_AGENT_LABEL` — slot letter + issue number extracted from branch name (e.g. `[A:#065]`)
-- `VITE_GIT_BRANCH` — full branch name (e.g. `feature/065-dynamic-label`)
 
 `VITE_AGENT_LABEL` is used by `index.html` as the browser tab title prefix.  
-`VITE_GIT_BRANCH` is shown in the DevDebugger panel header.
+The full git branch name is shown in the DevDebugger panel via the `virtual:git-branch` Vite plugin (see Option 3 below), which reads `.git/HEAD` live and triggers an HMR reload on `git checkout` — no dev server restart needed.
+
+> **Update (2026-06-04):** `VITE_GIT_BRANCH` was originally injected by `init.sh` as a static env var. It was superseded by a runtime Vite virtual module (`virtual:git-branch`) that watches `.git/HEAD` and updates the DevDebugger label on every `git checkout` without restarting the dev server. `init.sh` no longer writes `VITE_GIT_BRANCH`.
 
 ---
 
@@ -60,17 +61,20 @@ Set `VITE_AGENT_LABEL=[A]` in `.env` during workspace creation and never update 
 
 ---
 
-### Option 3: Read git branch at runtime from the browser (JavaScript)
+### Option 3: Read git branch at runtime via Vite virtual module ✅ *(chosen for DevDebugger)*
 
-Use a custom Vite plugin or a dev-server middleware to expose `git rev-parse` output as an env variable at HMR time.
+A custom Vite plugin exposes `virtual:git-branch` — reads `git rev-parse --abbrev-ref HEAD` at load time and watches `.git/HEAD` for changes. On `git checkout`, Vite invalidates the module and emits a full HMR reload.
 
 **Pros:**
 - Updates without restarting the dev server
+- No env var to inject or keep in sync
+- Browser reflects the actual branch at all times during a session
 
 **Cons:**
-- Requires a custom Vite plugin — significant added complexity
-- Couples the frontend build tool to a shell dependency
-- Overkill: branch switches during an active dev session are uncommon
+- Requires a custom Vite plugin in `vite.config.ts`
+- Couples the frontend build tool to a shell dependency (`git`)
+
+> Implemented in [pakodiazdev/sushigo#161](https://github.com/pakodiazdev/sushigo/pull/161).
 
 ---
 
@@ -82,8 +86,8 @@ Use a custom Vite plugin or a dev-server middleware to expose `git rev-parse` ou
 - No manual steps — consistent with the lab's "zero manual config" philosophy
 
 **Negative / trade-offs:**
-- Label reflects the branch at startup time, not live — a branch switch mid-session requires restarting `init.sh` to update the label
-- `VITE_AGENT_LABEL` and `VITE_GIT_BRANCH` values in `.env` are transient — they should not be committed
+- Label reflects the branch at startup time, not live — a branch switch mid-session requires restarting `init.sh` to update `VITE_AGENT_LABEL` (tab title). The DevDebugger branch label updates live via the Vite plugin.
+- `VITE_AGENT_LABEL` value in `.env` is transient — it should not be committed
 
 **Neutral:**
 - `tools.env` and `tools.env.example` gained `AGENT_LABEL_A..H` entries as the base label source per slot
@@ -96,6 +100,7 @@ Use a custom Vite plugin or a dev-server middleware to expose `git rev-parse` ou
 |----|-------------|------|
 | — | Browser tab must identify the active workspace slot and current issue being worked on | Functional |
 | — | DevDebugger panel must show the full git branch name for orientation in multi-branch sessions | Functional |
+| — | Branch label in DevDebugger must update on `git checkout` without restarting the dev server | Functional |
 | — | Workspace label must update automatically on every `init.sh` run without manual `.env` edits | Non-functional |
 | — | Fallback must work gracefully when branch name contains no issue number | Non-functional |
 
