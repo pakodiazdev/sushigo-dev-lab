@@ -46,10 +46,12 @@ vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT
 PROCFILE
 }
 
-# ── Shared helper: inject git branch info into webapp .env ───────────────────
+# ── Shared helper: inject agent label into webapp .env ───────────────────────
 # Usage: inject_branch_env <ws_dir>
-# Updates VITE_AGENT_LABEL ([A:#065]) and VITE_GIT_BRANCH in code/webapp/.env.
+# Updates VITE_AGENT_LABEL ([A:#065]) in code/webapp/.env.
 # Safe no-op if webapp/.env does not exist.
+# Note: VITE_GIT_BRANCH was removed — branch is read live from .git/HEAD
+# via the virtual:git-branch Vite plugin (reacts to git checkout without restart).
 inject_branch_env() {
   local ws_dir="$1"
   local webapp_env="${ws_dir}/code/webapp/.env"
@@ -70,12 +72,6 @@ inject_branch_env() {
     sed -i '' "s|^VITE_AGENT_LABEL=.*|VITE_AGENT_LABEL=${agent_label}|" "${webapp_env}"
   else
     echo "VITE_AGENT_LABEL=${agent_label}" >> "${webapp_env}"
-  fi
-
-  if grep -q "^VITE_GIT_BRANCH=" "${webapp_env}"; then
-    sed -i '' "s|^VITE_GIT_BRANCH=.*|VITE_GIT_BRANCH=${branch}|" "${webapp_env}"
-  else
-    echo "VITE_GIT_BRANCH=${branch}" >> "${webapp_env}"
   fi
 }
 
