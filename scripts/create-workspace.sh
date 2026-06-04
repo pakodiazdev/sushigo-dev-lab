@@ -61,8 +61,12 @@ DB_NAME="sushigo_ws_${LETTER}"
 LETTER_UPPER="$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')"
 _slot_api_var="API_PORT_${LETTER_UPPER}"
 _slot_vite_var="VITE_PORT_${LETTER_UPPER}"
+_slot_label_var="AGENT_LABEL_${LETTER_UPPER}"
 APP_PORT="${!_slot_api_var:-$((8001 + NEXT_INDEX))}"
 VITE_PORT="${!_slot_vite_var:-$((5171 + NEXT_INDEX))}"
+WS_LABEL="${!_slot_label_var:-[${LETTER_UPPER}]}"
+ISSUE_NUM=$(echo "${BRANCH}" | grep -oE '[0-9]+' | head -1 || true)
+[ -n "${ISSUE_NUM}" ] && WS_LABEL="${WS_LABEL%]}:#${ISSUE_NUM}]"
 
 echo ""
 echo "➕ Creating ${WS_NAME} (branch: ${BRANCH})"
@@ -119,7 +123,6 @@ else
 fi
 
 # Configure webapp .env (VITE_HMR_HOST intentionally unset → Vite auto-detects in local dev)
-WS_LABEL="[$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')]"
 cat > "${WS_DIR}/code/webapp/.env" <<EOF
 VITE_API_URL=http://localhost:${APP_PORT}/api/v1
 VITE_APP_ENV=dev
@@ -128,7 +131,8 @@ VITE_DEV_DEBUGGER_START_HIDDEN=false
 VITE_LOGIN_WITH_DEVDEBUG=true
 VITE_DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest
 VITE_ENV_BADGE=🟢 
-VITE_WS_LABEL=${WS_LABEL} 
+VITE_AGENT_LABEL=${WS_LABEL} 
+VITE_GIT_BRANCH=${BRANCH}
 EOF
 
 cat > "${WS_DIR}/.env" <<EOF

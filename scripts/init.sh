@@ -46,6 +46,39 @@ vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT
 PROCFILE
 }
 
+# ── Shared helper: inject git branch info into webapp .env ───────────────────
+# Usage: inject_branch_env <ws_dir>
+# Updates VITE_AGENT_LABEL ([A:#065]) and VITE_GIT_BRANCH in code/webapp/.env.
+# Safe no-op if webapp/.env does not exist.
+inject_branch_env() {
+  local ws_dir="$1"
+  local webapp_env="${ws_dir}/code/webapp/.env"
+  [ -f "${webapp_env}" ] || return 0
+
+  local letter branch issue_num agent_label base_label
+  letter=$(basename "${ws_dir}" | sed 's/sushigo-//' | tr '[:lower:]' '[:upper:]')
+  branch=$(git -C "${ws_dir}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+  issue_num=$(echo "${branch}" | grep -oE '[0-9]+' | head -1 || true)
+  base_label="[${letter}]"
+  if [ -n "${issue_num}" ]; then
+    agent_label="${base_label%]}:#${issue_num}] "
+  else
+    agent_label="${base_label} "
+  fi
+
+  if grep -q "^VITE_AGENT_LABEL=" "${webapp_env}"; then
+    sed -i '' "s|^VITE_AGENT_LABEL=.*|VITE_AGENT_LABEL=${agent_label}|" "${webapp_env}"
+  else
+    echo "VITE_AGENT_LABEL=${agent_label}" >> "${webapp_env}"
+  fi
+
+  if grep -q "^VITE_GIT_BRANCH=" "${webapp_env}"; then
+    sed -i '' "s|^VITE_GIT_BRANCH=.*|VITE_GIT_BRANCH=${branch}|" "${webapp_env}"
+  else
+    echo "VITE_GIT_BRANCH=${branch}" >> "${webapp_env}"
+  fi
+}
+
 # ── Ensure shared services are running ──────────────────────────────────────
 if ! docker compose -f "${ROOT_DIR}/docker-compose.yml" exec -T db \
   pg_isready -U "${PG_USER}" &>/dev/null 2>&1; then
@@ -81,6 +114,7 @@ if [ -n "$TARGET" ]; then
   fi
 
   echo "🚀 Starting ${TARGET}..."
+  inject_branch_env "${WS_DIR}"
   set -o allexport
   source "${WS_DIR}/.env" 2>/dev/null || true
   set +o allexport
@@ -125,6 +159,7 @@ for WS_DIR in "${WS_DIRS[@]}"; do
   fi
 
   source "${WS_DIR}/.env" 2>/dev/null || true
+  inject_branch_env "${WS_DIR}"
 
   echo "  ▶ ${WS_NAME}"
   echo "    Backend  → http://127.0.0.1:${APP_PORT:-?}"
