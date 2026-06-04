@@ -285,6 +285,7 @@ This lab solves that by keeping the "one command → fully working environment" 
 - [Architecture decisions](docs/architecture.md) — why shared services, why Overmind, port strategy
 - [Working with agents](docs/agents.md) — branches, Overmind commands, database resets
 - [Troubleshooting](docs/troubleshooting.md) — port conflicts, DB errors, PHP version issues, Vite CORS
+- [Technical decisions (ADRs)](docs/decisions/index.md) — decision log with context, alternatives, and requirements
 
 ---
 
