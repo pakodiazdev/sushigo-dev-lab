@@ -66,17 +66,17 @@ No Nginx. No Apache container. No browser in Docker.
 
 ### Phase 1 — sushigo repo changes
 
-- [ ] 📝 Add `Procfile.dev` at root of `sushigo` repo
-- [ ] 📝 Add `init-agent-workspace.sh` at root of `sushigo` repo (chmod +x)
-- [ ] 📝 Update `sushigo/CLAUDE.md` — document `init-agent-workspace.sh` as startup method when using dev-lab
-- [ ] 🧪 Verify: `./init-agent-workspace.sh` starts both services from a plain sushigo clone
+- [x] 📝 Add `Procfile.dev` at root of `sushigo` repo
+- [x] 📝 Add `init-agent-workspace.sh` at root of `sushigo` repo (chmod +x)
+- [x] 📝 Update `sushigo/CLAUDE.md` — document `init-agent-workspace.sh` as startup method when using dev-lab
+- [x] 🧪 Verify: `./init-agent-workspace.sh` starts both services from a plain sushigo clone
 
 ### Phase 2 — dev-lab repo structure
 
-- [ ] 📝 `docker-compose.yml` — PostgreSQL 16, Redis 7-alpine, Mailpit
-- [ ] 📝 `.gitignore` — exclude `agents/` entirely
-- [ ] 📝 `Makefile` — shortcuts: `make up`, `make init`, `make reset-db AGENT=agent-a`
-- [ ] 📝 `doc/tasks/` structure — backlog + monthly folders (same as sushigo)
+- [x] 📝 `docker-compose.yml` — PostgreSQL 16, Redis 7-alpine, Mailpit
+- [x] 📝 `.gitignore` — exclude `agents/` entirely
+- [x] 📝 `Makefile` — shortcuts: `make up`, `make init`, `make reset-db AGENT=agent-a`
+- [x] 📝 `doc/tasks/` structure — backlog + monthly folders (same as sushigo)
 
 ### Phase 3 — `scripts/setup.sh`
 
@@ -84,17 +84,17 @@ No Nginx. No Apache container. No browser in Docker.
 Usage: ./scripts/setup.sh --agents=3 [--repo=URL]
 ```
 
-- [ ] 🔧 Check prerequisites: `git`, `php` (≥8.2), `composer`, `node`, `npm`, `overmind`, `docker`, `psql`
-- [ ] 🔧 Start shared Docker services (`docker compose up -d`)
-- [ ] 🔧 Wait for PostgreSQL health check (max 30s)
-- [ ] 🔧 For each agent: clone sushigo on `main` (or `--branch` if specified) → `.env` → create DB → `composer install` → `npm install` → `key:generate` → `migrate --seed`
-- [ ] 🔧 Print summary table (agent / backend URL / frontend URL / DB)
+- [x] 🔧 Check prerequisites: `git`, `php` (≥8.2), `composer`, `node`, `npm`, `overmind`, `docker`, `psql`
+- [x] 🔧 Start shared Docker services (`docker compose up -d`)
+- [x] 🔧 Wait for PostgreSQL health check (max 30s)
+- [x] 🔧 For each agent: clone sushigo on `main` (or `--branch` if specified) → `.env` → create DB → `composer install` → `npm install` → `key:generate` → `migrate --seed`
+- [x] 🔧 Print summary table (agent / backend URL / frontend URL / DB)
 
-### Phase 4 — `scripts/create-agent.sh`
+### Phase 4 — `scripts/create-workspace.sh` _(renamed from `create-agent.sh`)_
 
-- [ ] 🔧 Auto-detect next available letter and port
-- [ ] 🔧 Clone sushigo on `main` by default; accept optional `--branch=<name>` argument to clone on a specific branch
-- [ ] 🔧 Configure `.env`, create DB, install deps, migrate
+- [x] 🔧 Auto-detect next available letter and port
+- [x] 🔧 Clone sushigo on `main` by default; accept optional `--branch=<name>` argument to clone on a specific branch
+- [x] 🔧 Configure `.env`, create DB, install deps, migrate
 
 ### Phase 5 — `scripts/init.sh`
 
@@ -104,38 +104,38 @@ Usage:
   ./scripts/init.sh agent-a     → start one agent (foreground)
 ```
 
-- [ ] 🔧 Single agent: `cd agents/sushigo-agent-<name> && ./init-agent-workspace.sh` (foreground)
-- [ ] 🔧 All agents: start each as a background Overmind session
-- [ ] 🔧 Verify Docker shared services are running before starting agents
+- [x] 🔧 Single agent: `cd agents/sushigo-agent-<name> && ./init-agent-workspace.sh` (foreground)
+- [x] 🔧 All agents: start each as a background Overmind session
+- [x] 🔧 Verify Docker shared services are running before starting agents
 
-### Phase 6 — `scripts/reset-agent-db.sh`
+### Phase 6 — `scripts/reset-workspace-db.sh` _(renamed from `reset-agent-db.sh`)_
 
 ```
-Usage: ./scripts/reset-agent-db.sh agent-a
+Usage: ./scripts/reset-workspace-db.sh sushigo-a
 ```
 
-- [ ] 🔧 Drop → recreate → `migrate --seed` for one agent's DB only
+- [x] 🔧 Drop → recreate → `migrate --seed` for one agent's DB only
 
 ### Phase 7 — Documentation
 
-- [ ] 📝 `README.md` — overview, real problem context, design philosophy, quickstart, scripts reference
-- [ ] 📝 `docs/architecture.md` — shared-services/local-execution rationale, Overmind decision, port table
-- [ ] 📝 `docs/agents.md` — create agents, switch branches, Overmind commands (`overmind restart web`, `overmind status`)
-- [ ] 📝 `docs/troubleshooting.md` — port conflicts, PostgreSQL not ready, overmind not found, PHP version mismatch, Vite CORS
+- [x] 📝 `README.md` — overview, real problem context, design philosophy, quickstart, scripts reference
+- [x] 📝 `docs/architecture.md` — shared-services/local-execution rationale, Overmind decision, port table
+- [x] 📝 `docs/workspaces.md` _(renamed from `agents.md`)_ — create workspaces, switch branches, Overmind commands
+- [x] 📝 `docs/troubleshooting.md` — port conflicts, PostgreSQL not ready, overmind not found, PHP version mismatch, Vite CORS
 
 ---
 
 ## 🎯 Acceptance Criteria
 
-- [ ] `./scripts/setup.sh --agents=2` runs end-to-end without manual intervention
-- [ ] Each agent starts with `./scripts/init.sh agent-a` and both backend + frontend respond
-- [ ] Agents are fully independent — switching branch in `agent-a` does not affect `agent-b`
-- [ ] `./scripts/reset-agent-db.sh agent-b` wipes and re-seeds only `sushigo_agent_b`
-- [ ] A single PostgreSQL, Redis, and Mailpit instance serves all agents
-- [ ] `./init-agent-workspace.sh` in sushigo root works standalone (without dev-lab)
-- [ ] Overmind stops both services cleanly with Ctrl+C
-- [ ] `docs/troubleshooting.md` covers at least 5 real error scenarios with solutions
-- [ ] README quickstart verified on a clean machine
+- [x] `./scripts/setup.sh --workspaces=2` runs end-to-end without manual intervention
+- [x] Each workspace starts with `./scripts/init.sh sushigo-a` and both backend + frontend respond
+- [x] Workspaces are fully independent — switching branch in `sushigo-a` does not affect `sushigo-b`
+- [x] `./scripts/reset-workspace-db.sh sushigo-b` wipes and re-seeds only `sushigo_b`
+- [x] A single PostgreSQL, Redis, and Mailpit instance serves all workspaces
+- [x] `./init-agent-workspace.sh` in sushigo root works standalone (without dev-lab)
+- [x] Overmind stops both services cleanly with Ctrl+C
+- [x] `docs/troubleshooting.md` covers at least 5 real error scenarios with solutions (20 sections)
+- [x] README quickstart verified on a clean machine
 
 ---
 
@@ -152,4 +152,6 @@ Usage: ./scripts/reset-agent-db.sh agent-a
 
 - **Optimistic:** `6h`
 - **Pessimistic:** `10h`
-- **Tracked:** ``
+- **Tracked:** `~8h`
+- **Closed:** `2026-06-05`
+- **Status:** ✅ Done — 100% complete
