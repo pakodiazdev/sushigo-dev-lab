@@ -70,9 +70,9 @@ inject_agent_label() {
   fi
 
   if grep -q "^VITE_AGENT_LABEL=" "${webapp_env}"; then
-    sed -i '' "s|^VITE_AGENT_LABEL=.*|VITE_AGENT_LABEL=${agent_label}|" "${webapp_env}"
+    sed -i '' "s|^VITE_AGENT_LABEL=.*|VITE_AGENT_LABEL=\"${agent_label}\"|" "${webapp_env}"
   else
-    echo "VITE_AGENT_LABEL=${agent_label}" >> "${webapp_env}"
+    echo "VITE_AGENT_LABEL=\"${agent_label}\"" >> "${webapp_env}"
   fi
 }
 
