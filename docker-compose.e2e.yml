@@ -1,0 +1,120 @@
+networks:
+  sushigo-dev:
+    external: true
+    name: sushigo-dev-lab_default
+
+x-e2e-service: &e2e-service
+  build:
+    context: docker/php-e2e
+  restart: "no"
+  networks:
+    - sushigo-dev
+
+x-e2e-env: &e2e-env
+  APP_ENV: testing
+  APP_DEBUG: "false"
+  QUEUE_CONNECTION: sync
+  CACHE_STORE: array
+  LOG_CHANNEL: stderr
+  DB_CONNECTION: pgsql
+  DB_HOST: db
+  DB_PORT: 5432
+  DB_USERNAME: ${POSTGRES_USER:-admin}
+  DB_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+
+services:
+  e2e-api-a:
+    <<: *e2e-service
+    volumes:
+      - ./workspaces/sushigo-a/code/api:/app
+    ports:
+      - "127.0.0.1:${E2E_API_PORT_A:-8901}:8099"
+    environment:
+      <<: *e2e-env
+      DB_DATABASE: sushigo_ws_a_e2e
+      CACHE_PREFIX: e2e_a_
+      APP_URL: http://127.0.0.1:${E2E_API_PORT_A:-8901}
+
+  e2e-api-b:
+    <<: *e2e-service
+    volumes:
+      - ./workspaces/sushigo-b/code/api:/app
+    ports:
+      - "127.0.0.1:${E2E_API_PORT_B:-8902}:8099"
+    environment:
+      <<: *e2e-env
+      DB_DATABASE: sushigo_ws_b_e2e
+      CACHE_PREFIX: e2e_b_
+      APP_URL: http://127.0.0.1:${E2E_API_PORT_B:-8902}
+
+  e2e-api-c:
+    <<: *e2e-service
+    volumes:
+      - ./workspaces/sushigo-c/code/api:/app
+    ports:
+      - "127.0.0.1:${E2E_API_PORT_C:-8903}:8099"
+    environment:
+      <<: *e2e-env
+      DB_DATABASE: sushigo_ws_c_e2e
+      CACHE_PREFIX: e2e_c_
+      APP_URL: http://127.0.0.1:${E2E_API_PORT_C:-8903}
+
+  e2e-api-d:
+    <<: *e2e-service
+    volumes:
+      - ./workspaces/sushigo-d/code/api:/app
+    ports:
+      - "127.0.0.1:${E2E_API_PORT_D:-8904}:8099"
+    environment:
+      <<: *e2e-env
+      DB_DATABASE: sushigo_ws_d_e2e
+      CACHE_PREFIX: e2e_d_
+      APP_URL: http://127.0.0.1:${E2E_API_PORT_D:-8904}
+
+  e2e-api-e:
+    <<: *e2e-service
+    volumes:
+      - ./workspaces/sushigo-e/code/api:/app
+    ports:
+      - "127.0.0.1:${E2E_API_PORT_E:-8905}:8099"
+    environment:
+      <<: *e2e-env
+      DB_DATABASE: sushigo_ws_e_e2e
+      CACHE_PREFIX: e2e_e_
+      APP_URL: http://127.0.0.1:${E2E_API_PORT_E:-8905}
+
+  e2e-api-f:
+    <<: *e2e-service
+    volumes:
+      - ./workspaces/sushigo-f/code/api:/app
+    ports:
+      - "127.0.0.1:${E2E_API_PORT_F:-8906}:8099"
+    environment:
+      <<: *e2e-env
+      DB_DATABASE: sushigo_ws_f_e2e
+      CACHE_PREFIX: e2e_f_
+      APP_URL: http://127.0.0.1:${E2E_API_PORT_F:-8906}
+
+  e2e-api-g:
+    <<: *e2e-service
+    volumes:
+      - ./workspaces/sushigo-g/code/api:/app
+    ports:
+      - "127.0.0.1:${E2E_API_PORT_G:-8907}:8099"
+    environment:
+      <<: *e2e-env
+      DB_DATABASE: sushigo_ws_g_e2e
+      CACHE_PREFIX: e2e_g_
+      APP_URL: http://127.0.0.1:${E2E_API_PORT_G:-8907}
+
+  e2e-api-h:
+    <<: *e2e-service
+    volumes:
+      - ./workspaces/sushigo-h/code/api:/app
+    ports:
+      - "127.0.0.1:${E2E_API_PORT_H:-8908}:8099"
+    environment:
+      <<: *e2e-env
+      DB_DATABASE: sushigo_ws_h_e2e
+      CACHE_PREFIX: e2e_h_
+      APP_URL: http://127.0.0.1:${E2E_API_PORT_H:-8908}

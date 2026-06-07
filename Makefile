@@ -1,4 +1,4 @@
-.PHONY: help doctor install setup up down logs init reset-db add-workspace
+.PHONY: help doctor install setup up down logs init reset-db add-workspace cypress e2e e2e-stop
 
 WORKSPACE ?=
 PHP    ?=
@@ -25,6 +25,8 @@ help:
 	@echo "  make add-workspace                  Add a new workspace clone"
 	@echo "  make add-workspace BRANCH=feat/x    Add a new workspace on a specific branch"
 	@echo "  make reset-db WORKSPACE=sushigo-a   Wipe and re-seed one workspace database"
+	@echo "  make e2e WORKSPACE=sushigo-a         Start E2E stack (container + Vite) for a workspace"
+	@echo "  make e2e-stop WORKSPACE=sushigo-a    Stop E2E stack for a workspace"
 	@echo ""
 
 doctor:
@@ -68,3 +70,15 @@ ifeq ($(strip $(WORKSPACE)),)
 	$(error WORKSPACE is required. Usage: make reset-db WORKSPACE=sushigo-a)
 endif
 	@./scripts/reset-workspace-db.sh $(WORKSPACE)
+
+e2e:
+ifeq ($(strip $(WORKSPACE)),)
+	$(error WORKSPACE is required. Usage: make e2e WORKSPACE=sushigo-a)
+endif
+	@./scripts/start-e2e.sh $(WORKSPACE)
+
+e2e-stop:
+ifeq ($(strip $(WORKSPACE)),)
+	$(error WORKSPACE is required. Usage: make e2e-stop WORKSPACE=sushigo-a)
+endif
+	@./scripts/stop-e2e.sh $(WORKSPACE)
