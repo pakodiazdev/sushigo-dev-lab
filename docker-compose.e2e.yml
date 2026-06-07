@@ -1,14 +1,9 @@
-networks:
-  sushigo-dev:
-    external: true
-    name: sushigo-dev-lab_default
-
 x-e2e-service: &e2e-service
   build:
     context: docker/php-e2e
   restart: "no"
-  networks:
-    - sushigo-dev
+  depends_on:
+    - db
 
 x-e2e-env: &e2e-env
   APP_ENV: testing

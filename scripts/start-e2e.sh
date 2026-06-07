@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Starts a lightweight PHP Docker container (volume-mounted to the workspace
 # code), creates the E2E database, runs migrations, launches a Vite E2E dev
-# server on a separate port, and opens Cypress.
+# server on a separate port, and prints the Cypress command to run.
 #
 # Usage:
 #   ./scripts/start-e2e.sh sushigo-a
@@ -95,7 +95,7 @@ done
 echo "✅ Container ready"
 
 # ── Copy APP_KEY from workspace .env into the container ─────────────────────
-APP_KEY=$(grep "^APP_KEY=" "${WS_DIR}/code/api/.env" | cut -d'=' -f2-)
+APP_KEY=$(grep "^APP_KEY=" "${WS_DIR}/code/api/.env" 2>/dev/null | cut -d'=' -f2- || true)
 if [ -n "${APP_KEY}" ]; then
   docker exec "${CONTAINER}" bash -c "grep -q '^APP_KEY=' /app/.env 2>/dev/null \
     && sed -i 's|^APP_KEY=.*|APP_KEY=${APP_KEY}|' /app/.env \

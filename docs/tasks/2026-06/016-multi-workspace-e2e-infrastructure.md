@@ -120,7 +120,7 @@ Per-slot Cypress (local, real browser):
 
 ## 🎯 Acceptance Criteria
 
-- [ ] `make e2e WORKSPACE=sushigo-a` starts the full E2E stack for slot a and opens Cypress
+- [ ] `make e2e WORKSPACE=sushigo-a` starts the full E2E stack for slot a and prints the Cypress command to run
 - [ ] `make e2e WORKSPACE=sushigo-b` runs simultaneously and independently from sushigo-a
 - [ ] Uncommitted changes in `workspaces/sushigo-a/code/api` are immediately visible to `e2e-api-a` (no rebuild)
 - [ ] Uncommitted changes in `workspaces/sushigo-a/code/webapp` are immediately visible via Vite E2E
