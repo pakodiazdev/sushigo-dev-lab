@@ -1,4 +1,4 @@
-.PHONY: help doctor install setup up down logs init reset-db add-workspace cypress e2e e2e-stop
+.PHONY: help doctor install setup up down logs init reset-db add-workspace e2e e2e-stop
 
 WORKSPACE ?=
 PHP    ?=

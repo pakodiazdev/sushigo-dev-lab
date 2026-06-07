@@ -43,7 +43,7 @@ echo "⏹  Stopping E2E stack for ${WS_NAME}..."
 # ── Stop Vite E2E ────────────────────────────────────────────────────────────
 if [ -f "${PID_FILE}" ]; then
   VITE_PID="$(cat "${PID_FILE}")"
-  if kill -0 "${VITE_PID}" 2>/dev/null; then
+  if [[ "${VITE_PID}" =~ ^[0-9]+$ ]] && kill -0 "${VITE_PID}" 2>/dev/null; then
     kill "${VITE_PID}"
     echo "  ✅ Vite E2E stopped (PID ${VITE_PID})"
   else
