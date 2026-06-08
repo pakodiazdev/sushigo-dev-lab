@@ -58,22 +58,20 @@ if [ -z "${CONTAINER}" ]; then
   exit 1
 fi
 
-BASE_URL="http://localhost:${E2E_VITE_PORT}"
-
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Cypress — ${WS_NAME}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Base URL:  ${BASE_URL}"
+echo "  Base URL:  http://localhost:${E2E_VITE_PORT}"
 echo "  Container: ${CONTAINER}"
 echo ""
 
 if [ "${MODE}" = "--run" ]; then
-  CYPRESS_baseUrl="${BASE_URL}" \
-  CYPRESS_container="${CONTAINER}" \
-    npm --prefix "${WS_DIR}/code/webapp" run cypress:run
+  E2E_CONTAINER="${CONTAINER}" \
+  VITE_PORT="${E2E_VITE_PORT}" \
+    npm --prefix "${WS_DIR}/code/webapp" run cypress:run:devlab
 else
-  CYPRESS_baseUrl="${BASE_URL}" \
-  CYPRESS_container="${CONTAINER}" \
-    npm --prefix "${WS_DIR}/code/webapp" run cypress:open
+  E2E_CONTAINER="${CONTAINER}" \
+  VITE_PORT="${E2E_VITE_PORT}" \
+    npm --prefix "${WS_DIR}/code/webapp" run cypress:open:devlab
 fi
