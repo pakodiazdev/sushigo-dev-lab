@@ -1,4 +1,4 @@
-.PHONY: help doctor install setup up down logs init reset-db add-workspace e2e e2e-stop
+.PHONY: help doctor install setup up down logs init reset-db add-workspace e2e e2e-stop cypress cypress-run
 
 WORKSPACE ?=
 PHP    ?=
@@ -25,8 +25,10 @@ help:
 	@echo "  make add-workspace                  Add a new workspace clone"
 	@echo "  make add-workspace BRANCH=feat/x    Add a new workspace on a specific branch"
 	@echo "  make reset-db WORKSPACE=sushigo-a   Wipe and re-seed one workspace database"
-	@echo "  make e2e WORKSPACE=sushigo-a         Start E2E stack (container + Vite) for a workspace"
-	@echo "  make e2e-stop WORKSPACE=sushigo-a    Stop E2E stack for a workspace"
+	@echo "  make e2e WORKSPACE=sushigo-a          Start E2E stack (container + Vite) for a workspace"
+	@echo "  make e2e-stop WORKSPACE=sushigo-a     Stop E2E stack for a workspace"
+	@echo "  make cypress WORKSPACE=sushigo-a      Open Cypress GUI against the running E2E stack"
+	@echo "  make cypress-run WORKSPACE=sushigo-a  Run Cypress headless (CI-style)"
 	@echo ""
 
 doctor:
@@ -82,3 +84,15 @@ ifeq ($(strip $(WORKSPACE)),)
 	$(error WORKSPACE is required. Usage: make e2e-stop WORKSPACE=sushigo-a)
 endif
 	@./scripts/stop-e2e.sh $(WORKSPACE)
+
+cypress:
+ifeq ($(strip $(WORKSPACE)),)
+	$(error WORKSPACE is required. Usage: make cypress WORKSPACE=sushigo-a)
+endif
+	@./scripts/cypress.sh $(WORKSPACE)
+
+cypress-run:
+ifeq ($(strip $(WORKSPACE)),)
+	$(error WORKSPACE is required. Usage: make cypress-run WORKSPACE=sushigo-a)
+endif
+	@./scripts/cypress.sh $(WORKSPACE) --run

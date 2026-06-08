@@ -76,11 +76,23 @@ echo "  Database      → ${DB_NAME}"
 echo ""
 
 # ── Start e2e-api container ─────────────────────────────────────────────────
-echo "🐳 Starting ${CONTAINER}..."
+SERVICE="e2e-api-${LETTER}"
+echo "🐳 Starting ${SERVICE}..."
 docker compose \
   -f "${ROOT_DIR}/docker-compose.yml" \
   -f "${ROOT_DIR}/docker-compose.e2e.yml" \
-  up "${CONTAINER}" -d --build
+  up "${SERVICE}" -d --build
+
+# Resolve actual container name (Docker Compose prefixes with project name)
+CONTAINER="$(docker compose \
+  -f "${ROOT_DIR}/docker-compose.yml" \
+  -f "${ROOT_DIR}/docker-compose.e2e.yml" \
+  ps --format '{{.Name}}' "${SERVICE}" | head -1)"
+
+if [ -z "${CONTAINER}" ]; then
+  echo "❌ Could not determine container name for ${SERVICE}"
+  exit 1
+fi
 
 echo "⏳ Waiting for container to be ready..."
 RETRIES=30
@@ -147,9 +159,11 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "  ✅ E2E stack for ${WS_NAME} is ready"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  Open Cypress:"
-echo "    cd workspaces/${WS_NAME}/code/webapp"
-echo "    E2E_CONTAINER=${CONTAINER} VITE_PORT=${E2E_VITE_PORT} npm run cypress:open:devlab"
+echo "  Open Cypress (interactive):"
+echo "    make cypress WORKSPACE=${WS_NAME}"
+echo ""
+echo "  Run Cypress headless:"
+echo "    make cypress-run WORKSPACE=${WS_NAME}"
 echo ""
 echo "  Stop when done:"
 echo "    make e2e-stop WORKSPACE=${WS_NAME}"
