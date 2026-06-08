@@ -46,7 +46,9 @@ if [ -f "${ROOT_DIR}/tools.env" ]; then
   source "${ROOT_DIR}/tools.env"
 fi
 
+_e2e_api_var="E2E_API_PORT_${LETTER_UPPER}"
 _e2e_vite_var="E2E_VITE_PORT_${LETTER_UPPER}"
+E2E_API_PORT="${!_e2e_api_var:-$((8900 + $(echo "${LETTER}" | tr 'a-h' '12345678')))}"
 E2E_VITE_PORT="${!_e2e_vite_var:-$((5180 + $(echo "${LETTER}" | tr 'a-h' '12345678')))}"
 
 # Find the running E2E container for this workspace
@@ -69,9 +71,11 @@ echo ""
 if [ "${MODE}" = "--run" ]; then
   E2E_CONTAINER="${CONTAINER}" \
   VITE_PORT="${E2E_VITE_PORT}" \
+  E2E_API_PORT="${E2E_API_PORT}" \
     npm --prefix "${WS_DIR}/code/webapp" run cypress:run:devlab
 else
   E2E_CONTAINER="${CONTAINER}" \
   VITE_PORT="${E2E_VITE_PORT}" \
+  E2E_API_PORT="${E2E_API_PORT}" \
     npm --prefix "${WS_DIR}/code/webapp" run cypress:open:devlab
 fi
