@@ -1,0 +1,79 @@
+#!/bin/bash
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# cypress.sh — Run Cypress against the E2E stack for one workspace
+#
+# Resolves the running container name and Vite port, then launches
+# Cypress with CYPRESS_baseUrl and CYPRESS_container set correctly.
+#
+# Usage:
+#   ./scripts/cypress.sh sushigo-a          # interactive GUI
+#   ./scripts/cypress.sh a --run            # headless
+# ---------------------------------------------------------------------------
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+TARGET="${1:-}"
+MODE="${2:-}"
+
+if [ -z "$TARGET" ]; then
+  echo "Usage: $0 <workspace> [--run]"
+  echo "Example: $0 sushigo-a"
+  echo "Example: $0 sushigo-a --run"
+  exit 1
+fi
+
+# Normalize: accept "a" or "sushigo-a"
+if [[ "$TARGET" == sushigo-* ]]; then
+  TARGET="${TARGET#sushigo-}"
+fi
+
+if ! [[ "$TARGET" =~ ^[a-h]$ ]]; then
+  echo "❌ Invalid workspace: ${TARGET} (expected a–h)"
+  exit 1
+fi
+
+LETTER="${TARGET}"
+LETTER_UPPER="$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')"
+WS_NAME="sushigo-${LETTER}"
+WS_DIR="${ROOT_DIR}/workspaces/${WS_NAME}"
+
+# Load tools.env for port config
+if [ -f "${ROOT_DIR}/tools.env" ]; then
+  # shellcheck source=/dev/null
+  source "${ROOT_DIR}/tools.env"
+fi
+
+_e2e_vite_var="E2E_VITE_PORT_${LETTER_UPPER}"
+E2E_VITE_PORT="${!_e2e_vite_var:-$((5180 + $(echo "${LETTER}" | tr 'a-h' '12345678')))}"
+
+# Find the running E2E container for this workspace
+CONTAINER="$(docker ps --format '{{.Names}}' | grep "e2e-api-${LETTER}" | head -1 || true)"
+
+if [ -z "${CONTAINER}" ]; then
+  echo "❌ E2E stack for ${WS_NAME} is not running."
+  echo "   Start it first: make e2e WORKSPACE=${WS_NAME}"
+  exit 1
+fi
+
+BASE_URL="http://localhost:${E2E_VITE_PORT}"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Cypress — ${WS_NAME}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Base URL:  ${BASE_URL}"
+echo "  Container: ${CONTAINER}"
+echo ""
+
+if [ "${MODE}" = "--run" ]; then
+  CYPRESS_baseUrl="${BASE_URL}" \
+  CYPRESS_container="${CONTAINER}" \
+    npm --prefix "${WS_DIR}/code/webapp" run cypress:run
+else
+  CYPRESS_baseUrl="${BASE_URL}" \
+  CYPRESS_container="${CONTAINER}" \
+    npm --prefix "${WS_DIR}/code/webapp" run cypress:open
+fi

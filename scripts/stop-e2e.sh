@@ -55,7 +55,7 @@ else
 fi
 
 # ── Stop e2e-api container ───────────────────────────────────────────────────
-if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
+if docker ps --format '{{.Names}}' | grep -q "${CONTAINER}"; then
   docker compose \
     -f "${ROOT_DIR}/docker-compose.yml" \
     -f "${ROOT_DIR}/docker-compose.e2e.yml" \
