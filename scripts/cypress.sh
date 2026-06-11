@@ -60,19 +60,35 @@ if [ -z "${CONTAINER}" ]; then
   exit 1
 fi
 
+RECORD_ACTIVE=""
+if [ "${MODE}" = "--run" ] && [ -n "${CYPRESS_RECORD_KEY:-}" ]; then
+  RECORD_ACTIVE="yes"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Cypress — ${WS_NAME}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Base URL:  http://localhost:${E2E_VITE_PORT}"
 echo "  Container: ${CONTAINER}"
+if [ -n "${RECORD_ACTIVE}" ]; then
+  echo "  Recording: ✅ Cypress Cloud"
+fi
 echo ""
 
 if [ "${MODE}" = "--run" ]; then
-  E2E_CONTAINER="${CONTAINER}" \
-  VITE_PORT="${E2E_VITE_PORT}" \
-  E2E_API_PORT="${E2E_API_PORT}" \
-    npm --prefix "${WS_DIR}/code/webapp" run cypress:run:devlab
+  if [ -n "${RECORD_ACTIVE}" ]; then
+    E2E_CONTAINER="${CONTAINER}" \
+    VITE_PORT="${E2E_VITE_PORT}" \
+    E2E_API_PORT="${E2E_API_PORT}" \
+    CYPRESS_RECORD_KEY="${CYPRESS_RECORD_KEY}" \
+      npm --prefix "${WS_DIR}/code/webapp" run cypress:run:devlab -- --record
+  else
+    E2E_CONTAINER="${CONTAINER}" \
+    VITE_PORT="${E2E_VITE_PORT}" \
+    E2E_API_PORT="${E2E_API_PORT}" \
+      npm --prefix "${WS_DIR}/code/webapp" run cypress:run:devlab
+  fi
 else
   E2E_CONTAINER="${CONTAINER}" \
   VITE_PORT="${E2E_VITE_PORT}" \
