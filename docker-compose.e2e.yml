@@ -16,6 +16,8 @@ x-e2e-env: &e2e-env
   DB_PORT: 5432
   DB_USERNAME: ${POSTGRES_USER:-admin}
   DB_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+  LOGIN_WITH_DEVDEBUG: "true"
+  DEV_LOGIN_ALLOWED_ENVIRONMENTS: "dev,devtest,local,testing"
 
 services:
   e2e-api-a:
