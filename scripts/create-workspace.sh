@@ -21,6 +21,11 @@ if [ -f "${ROOT_DIR}/tools.env" ]; then
   source "${ROOT_DIR}/tools.env"
 fi
 
+# Load dev-lab .env (local secrets — gitignored, never committed)
+if [ -f "${ROOT_DIR}/.env" ]; then
+  source "${ROOT_DIR}/.env"
+fi
+
 PG_USER="${POSTGRES_USER:-admin}"
 PG_PASS="${POSTGRES_PASSWORD:-admin}"
 PG_HOST="${POSTGRES_HOST:-127.0.0.1}"
@@ -140,6 +145,8 @@ VITE_PORT=${VITE_PORT}
 DB_DATABASE=${DB_NAME}
 WORKSPACE_ROOT=${WS_DIR}
 EOF
+# Propagate dev-lab secrets to workspace
+[ -n "${SONAR_TOKEN:-}" ] && echo "SONAR_TOKEN=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
 
 # Patch Procfile.dev with absolute paths so overmind works regardless of cwd
 # (overmind creates its own tmux server which does not inherit the caller's cwd)

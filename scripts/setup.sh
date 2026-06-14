@@ -18,6 +18,11 @@ if [ -f "${ROOT_DIR}/tools.env" ]; then
   source "${ROOT_DIR}/tools.env"
 fi
 
+# Load dev-lab .env (local secrets — gitignored, never committed)
+if [ -f "${ROOT_DIR}/.env" ]; then
+  source "${ROOT_DIR}/.env"
+fi
+
 WORKSPACES=1
 BRANCH="main"
 REPO="https://github.com/pakodiazdev/sushigo.git"
@@ -149,6 +154,14 @@ for i in $(seq 0 $((WORKSPACES - 1))); do
       if ! grep -q "^WORKSPACE_ROOT=" "${WS_DIR}/.env"; then
         echo "WORKSPACE_ROOT=${WS_DIR}" >> "${WS_DIR}/.env"
       fi
+      # Propagate dev-lab secrets (upsert)
+      if [ -n "${SONAR_TOKEN:-}" ]; then
+        if grep -q "^SONAR_TOKEN=" "${WS_DIR}/.env"; then
+          sed -i '' "s|^SONAR_TOKEN=.*|SONAR_TOKEN=${SONAR_TOKEN}|" "${WS_DIR}/.env"
+        else
+          echo "SONAR_TOKEN=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
+        fi
+      fi
       cat > "${WS_DIR}/Procfile.dev" <<'PROCFILE'
 web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
 vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
@@ -211,6 +224,8 @@ VITE_PORT=${VITE_PORT}
 DB_DATABASE=${DB_NAME}
 WORKSPACE_ROOT=${WS_DIR}
 EOF
+  # Propagate dev-lab secrets to workspace
+  [ -n "${SONAR_TOKEN:-}" ] && echo "SONAR_TOKEN=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
 
   # Patch Procfile.dev with absolute paths so overmind works regardless of cwd
   # (overmind creates its own tmux server which does not inherit the caller's cwd)
