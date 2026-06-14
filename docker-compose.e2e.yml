@@ -18,6 +18,7 @@ x-e2e-env: &e2e-env
   DB_PASSWORD: ${POSTGRES_PASSWORD:-admin}
   LOGIN_WITH_DEVDEBUG: "true"
   DEV_LOGIN_ALLOWED_ENVIRONMENTS: "dev,devtest,local,testing"
+  LOG_RESET_LINK: "true"
 
 services:
   e2e-api-a:
