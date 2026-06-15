@@ -185,6 +185,19 @@ docs/004-troubleshooting-guide
 
 ---
 
+### PR Description (mandatory)
+
+Every PR opened from dev-lab **must** include a `## Workspace` footer:
+
+```
+## Workspace
+`sushigo-c` — `feature/067-daily-operational-report`
+```
+
+This identifies which workspace clone holds the branch, so any reviewer can locate it immediately without asking. Place it just before the attribution line.
+
+---
+
 ### Script Style (mandatory for all `.sh` files)
 
 ```bash
