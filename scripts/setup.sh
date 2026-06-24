@@ -233,8 +233,12 @@ VITE_PORT=${VITE_PORT}
 DB_DATABASE=${DB_NAME}
 WORKSPACE_ROOT=${WS_DIR}
 EOF
-  # Propagate dev-lab secrets to workspace
-  [ -n "${SONAR_TOKEN:-}" ] && echo "SONAR_TOKEN=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
+  # Propagate tool tokens from tools.env so workspace shell sessions have them available.
+  # SONAR_TOKEN is a user-level token that covers both API and webapp SonarCloud projects.
+  if [ -n "${SONAR_TOKEN:-}" ]; then
+    echo "SONAR_TOKEN_API=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
+    echo "SONAR_TOKEN_WEBAPP=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
+  fi
 
   # Patch Procfile.dev with absolute paths so overmind works regardless of cwd
   # (overmind creates its own tmux server which does not inherit the caller's cwd)
