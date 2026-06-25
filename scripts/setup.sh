@@ -198,6 +198,8 @@ PROCFILE
   sed -i '' "s|^DEV_LOGIN_ALLOWED_ENVIRONMENTS=.*|DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest,local|" code/api/.env
   # Enable clock simulation for local development
   sed -i '' "s|^CLOCK_SIMULATION_ENABLED=.*|CLOCK_SIMULATION_ENABLED=true|" code/api/.env
+  # Enable payroll attendance seed for local development
+  sed -i '' "s|^PAYROLL_SEED_ENABLED=.*|PAYROLL_SEED_ENABLED=true|" code/api/.env
   # Allow the workspace's Vite dev-server port in CORS (both localhost and 127.0.0.1)
   CORS_ORIGINS="http://localhost:${VITE_PORT},http://127.0.0.1:${VITE_PORT}"
   if grep -q "^CORS_ALLOWED_ORIGINS" code/api/.env; then
