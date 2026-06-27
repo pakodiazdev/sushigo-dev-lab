@@ -126,6 +126,12 @@ if grep -q "^CORS_ALLOWED_ORIGINS" code/api/.env; then
 else
   echo "CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}" >> code/api/.env
 fi
+# Point Swagger to this workspace's backend port so generated docs hit the right server
+if grep -q "^L5_SWAGGER_CONST_HOST" code/api/.env; then
+  sed -i '' "s|^L5_SWAGGER_CONST_HOST=.*|L5_SWAGGER_CONST_HOST=http://127.0.0.1:${APP_PORT}|" code/api/.env
+else
+  echo "L5_SWAGGER_CONST_HOST=http://127.0.0.1:${APP_PORT}" >> code/api/.env
+fi
 
 # Configure webapp .env (VITE_HMR_HOST intentionally unset → Vite auto-detects in local dev)
 cat > "${WS_DIR}/code/webapp/.env" <<EOF
