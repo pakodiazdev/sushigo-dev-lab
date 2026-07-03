@@ -185,6 +185,23 @@ docs/004-troubleshooting-guide
 
 ---
 
+### PR Title (mandatory)
+
+Every PR title **must** include the workspace letter, in its own bracket right after the issue number bracket:
+
+```
+<emoji> [#NNN][x] - <description> <emoji>
+```
+
+- `x` is the workspace letter, lowercase, matching the `workspaces/sushigo-<x>` directory (e.g. `a`, `b`, `c`)
+- No space between the issue bracket and the workspace-letter bracket
+
+**Example:** `✨ [#073][a] - Confirm weekly payroll close ✅`
+
+**Why:** dev-lab runs up to 8 parallel workspace clones. Without the letter in the title, reviewers scanning a PR list can't tell which workspace a PR came from without opening it.
+
+---
+
 ### PR Description (mandatory)
 
 Every PR opened from dev-lab **must** include a `## Workspace` footer:
