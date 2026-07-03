@@ -227,6 +227,7 @@ Every PR description **must** include a manual testing guide:
 **Rules:**
 - Add it as its own `## Manual Testing` section in the PR body, separate from the automated `## Test plan` checklist
 - Be concrete: exact commands, URLs, or UI steps — not "test the feature works"
+- **Never include passwords or other credentials in the PR body**, even for seeded/ephemeral test environments. Reference the test user by email/username only (e.g. "login as `admin@sushigo.com`") and let the reviewer look up the password in its usual documented location — don't put it in PR history
 
 ---
 
