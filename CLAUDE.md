@@ -215,6 +215,21 @@ This identifies which workspace clone holds the branch, so any reviewer can loca
 
 ---
 
+### Manual Testing Guide (mandatory)
+
+Every PR description **must** include a manual testing guide:
+
+- **New functionality:** step-by-step instructions to exercise the new behavior manually (command to run, page/route to visit, inputs to use, expected result).
+- **Bug fix:** steps to reproduce the original bug, plus steps to confirm it no longer happens.
+
+**Why:** automated tests catch regressions, but a reviewer still needs a fast, concrete way to verify the change does what the PR claims — without re-deriving the flow themselves from the diff.
+
+**Rules:**
+- Add it as its own `## Manual Testing` section in the PR body, separate from the automated `## Test plan` checklist
+- Be concrete: exact commands, URLs, or UI steps — not "test the feature works"
+
+---
+
 ### Script Style (mandatory for all `.sh` files)
 
 ```bash
