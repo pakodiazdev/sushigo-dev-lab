@@ -163,7 +163,7 @@ for i in $(seq 0 $((WORKSPACES - 1))); do
       php artisan migrate --force --quiet
 
       echo "  📖 Generating Swagger docs..."
-      php artisan l5-swagger:generate --quiet
+      php artisan l5-swagger:generate --quiet || echo "  ⚠️  Swagger doc generation failed — continuing without docs (see sushigo repo for the fix)"
       # Ensure WORKSPACE_ROOT is present and Procfile.dev uses absolute paths
       if ! grep -q "^WORKSPACE_ROOT=" "${WS_DIR}/.env"; then
         echo "WORKSPACE_ROOT=${WS_DIR}" >> "${WS_DIR}/.env"
@@ -297,7 +297,7 @@ PROCFILE
   php artisan db:seed --force --quiet
 
   echo "  📖 Generating Swagger docs..."
-  php artisan l5-swagger:generate --quiet
+  php artisan l5-swagger:generate --quiet || echo "  ⚠️  Swagger doc generation failed — continuing without docs (see sushigo repo for the fix)"
 
   echo "  ✅ sushigo-${LETTER} ready"
 done
