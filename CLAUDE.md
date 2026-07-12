@@ -187,7 +187,9 @@ docs/004-troubleshooting-guide
 
 ### PR Title (mandatory)
 
-Every PR title **must** include the workspace letter, in its own bracket right after the issue number bracket:
+> **Scope:** this convention applies to PRs in the `sushigo` repo, opened from a `workspaces/sushigo-<x>` clone. It does **not** apply to PRs in `sushigo-dev-lab` itself — this repo is the container/orchestration layer, not one of the lettered workspace clones, so there is no workspace slot to disambiguate.
+
+Every PR title in `sushigo` **must** include the workspace letter, in its own bracket right after the issue number bracket:
 
 ```
 <emoji> [#NNN][x] - <description> <emoji>
@@ -204,7 +206,9 @@ Every PR title **must** include the workspace letter, in its own bracket right a
 
 ### PR Description (mandatory)
 
-Every PR opened from dev-lab **must** include a `## Workspace` footer:
+> **Scope:** like the PR title convention above, the `## Workspace` footer applies to PRs in the `sushigo` repo only — not to PRs in `sushigo-dev-lab` itself.
+
+Every PR opened in `sushigo` from a dev-lab workspace **must** include a `## Workspace` footer:
 
 ```
 ## Workspace
