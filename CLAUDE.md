@@ -206,9 +206,20 @@ Every PR title in `sushigo` **must** include the workspace letter, in its own br
 
 ### PR Description (mandatory)
 
+Every PR body, in **both** `sushigo` and `sushigo-dev-lab`, **must** include a `Closes #NNN` line referencing the issue the PR resolves, so GitHub auto-closes the issue the moment the PR merges. Place it near the top of the `## Summary` section.
+
+```
+## Summary
+Closes #009
+
+- ...
+```
+
+**Why:** a merged PR with no `Closes` line leaves its issue open — someone has to notice and close it by hand. Two PRs (#44, #46) already merged without one and both issues had to be closed manually after the fact.
+
 > **Scope:** like the PR title convention above, the `## Workspace` footer applies to PRs in the `sushigo` repo only — not to PRs in `sushigo-dev-lab` itself.
 
-Every PR opened in `sushigo` from a dev-lab workspace **must** include a `## Workspace` footer:
+Every PR opened in `sushigo` from a dev-lab workspace **must** also include a `## Workspace` footer:
 
 ```
 ## Workspace
