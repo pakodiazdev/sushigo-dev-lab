@@ -95,6 +95,20 @@ if ! docker compose -f "${ROOT_DIR}/docker-compose.yml" exec -T db \
   done
 fi
 
+# ── PHPUnit test database ───────────────────────────────────────────────────
+# mydb_test is hardcoded in each workspace's phpunit.xml (DB_DATABASE env).
+# It is shared across all workspaces — PHPUnit wraps each test in a transaction,
+# so concurrent runs don't collide. Safe to (re)create here since setup.sh may
+# not have run yet, or this may be the first workspace on a fresh lab.
+echo "🗄️  Ensuring PHPUnit test database (mydb_test) exists..."
+CREATE_OUTPUT="$(pg -d postgres -c "CREATE DATABASE mydb_test;" 2>&1)" || true
+if echo "${CREATE_OUTPUT}" | grep -q "already exists"; then
+  echo "ℹ️  mydb_test already exists — skipping"
+elif echo "${CREATE_OUTPUT}" | grep -qi "error\|fatal\|permission"; then
+  echo "❌ Failed to create mydb_test: ${CREATE_OUTPUT}"
+  exit 1
+fi
+
 # ── Clone ────────────────────────────────────────────────────────────────────
 echo "📦 Cloning sushigo on branch ${BRANCH}..."
 git clone --branch "${BRANCH}" "${REPO}" "${WS_DIR}"

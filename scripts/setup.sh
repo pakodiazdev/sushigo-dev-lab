@@ -91,6 +91,20 @@ until docker compose -f "${ROOT_DIR}/docker-compose.yml" exec -T db \
 done
 echo "✅ PostgreSQL ready"
 
+# ── PHPUnit test database ───────────────────────────────────────────────────
+# mydb_test is hardcoded in each workspace's phpunit.xml (DB_DATABASE env).
+# It is shared across all workspaces — PHPUnit wraps each test in a transaction,
+# so concurrent runs don't collide. Create it once, regardless of --workspaces count.
+echo ""
+echo "🗄️  Ensuring PHPUnit test database (mydb_test) exists..."
+CREATE_OUTPUT="$(pg -d postgres -c "CREATE DATABASE mydb_test;" 2>&1)" || true
+if echo "${CREATE_OUTPUT}" | grep -q "already exists"; then
+  echo "  ℹ️  mydb_test already exists — skipping"
+elif echo "${CREATE_OUTPUT}" | grep -qi "error\|fatal\|permission"; then
+  echo "❌ Failed to create mydb_test: ${CREATE_OUTPUT}"
+  exit 1
+fi
+
 # ── Workspace creation loop ─────────────────────────────────────────────────
 mkdir -p "${ROOT_DIR}/workspaces"
 
