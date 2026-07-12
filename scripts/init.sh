@@ -16,6 +16,7 @@ set -euo pipefail
 # Usage:
 #   ./scripts/init.sh                  Start all workspaces (background)
 #   ./scripts/init.sh sushigo-a        Start one workspace (foreground, Overmind output)
+#   ./scripts/init.sh a                Shorthand for sushigo-a
 #   ./scripts/init.sh --count=2        Start only the first N workspaces (background)
 # ---------------------------------------------------------------------------
 
@@ -93,14 +94,19 @@ fi
 
 # ── Single agent (foreground) ────────────────────────────────────────────────
 if [ -n "$TARGET" ]; then
-  # Accept "a", "agent-a", or "sushigo-agent-a"
-  if [[ "$TARGET" != agent-* ]] && [[ "$TARGET" != sushigo-* ]]; then
-    TARGET="agent-${TARGET}"
-  fi
-  if [[ "$TARGET" != sushigo-* ]]; then
-    TARGET="sushigo-${TARGET}"
+  # Normalize: accept "a" or "sushigo-a" — extract the letter
+  if [[ "$TARGET" == sushigo-* ]]; then
+    TARGET="${TARGET#sushigo-}"
   fi
 
+  # Validate: must be a single letter a–h
+  if ! [[ "$TARGET" =~ ^[a-h]$ ]]; then
+    echo "❌ Invalid workspace name: ${TARGET}"
+    echo "   Expected: a through h, or sushigo-a through sushigo-h"
+    exit 1
+  fi
+
+  TARGET="sushigo-${TARGET}"
   WS_DIR="${WS_DIR_BASE}/${TARGET}"
 
   if [ ! -d "${WS_DIR}" ]; then
