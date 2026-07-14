@@ -237,6 +237,39 @@ Seeders use `updateOrCreate()` by convention — if yours doesn't, that's the bu
 
 ---
 
+## Tool tokens
+
+### `SONAR_TOKEN_WEBAPP` / `SONAR_TOKEN_API` not found in an agent or terminal session
+
+```
+❌ Missing SONAR_TOKEN_WEBAPP and SONAR_TOKEN_API environment variables.
+```
+
+Not a copy failure — `setup.sh`/`create-workspace.sh` already propagate `SONAR_TOKEN` from
+the dev-lab root `.env` into every `workspaces/sushigo-<x>/.env` as `SONAR_TOKEN_API` and
+`SONAR_TOKEN_WEBAPP` (see `scripts/setup.sh` and `scripts/create-workspace.sh`). Verify they're
+actually there:
+
+```bash
+grep SONAR workspaces/sushigo-a/.env
+```
+
+The real gap: `.env` files are read by the Laravel/Vite dotenv loaders, not by your shell — a
+plain terminal or a Claude Code Bash session never sources them automatically. Export them into
+the current shell before running tools that expect real env vars (e.g. the `/sonar-review`
+Claude Code skill):
+
+```bash
+export $(grep -E '^SONAR_TOKEN_(API|WEBAPP)=' workspaces/sushigo-a/.env | xargs)
+```
+
+If the tokens are missing from the workspace `.env` entirely, set `SONAR_TOKEN` in the dev-lab
+root `.env` (gitignored, one token covers both SonarCloud projects) and re-run
+`./scripts/setup.sh` or `./scripts/create-workspace.sh` — both upsert `SONAR_TOKEN_API` /
+`SONAR_TOKEN_WEBAPP` into every existing workspace's `.env`.
+
+---
+
 ## Cleanup
 
 ### Remove one workspace completely
