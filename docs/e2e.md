@@ -20,7 +20,7 @@ E2E tests use Cypress and run against a lightweight PHP container with an isolat
 
 | Component | What it is |
 |---|---|
-| `e2e-api-a` | PHP 8.3 container, `APP_ENV=testing`, no cache, isolated DB |
+| `e2e-api-a` | PHP 8.4 container, `APP_ENV=testing`, no cache, isolated DB |
 | `sushigo_ws_a_e2e` | Separate PostgreSQL database — never shares state with dev DB |
 | Vite E2E server | Same webapp, different port, `VITE_API_URL` points to the container |
 | Cypress | Runs locally on your machine (not inside Docker) |
