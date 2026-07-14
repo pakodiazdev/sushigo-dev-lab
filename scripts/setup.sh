@@ -168,13 +168,17 @@ for i in $(seq 0 $((WORKSPACES - 1))); do
       if ! grep -q "^WORKSPACE_ROOT=" "${WS_DIR}/.env"; then
         echo "WORKSPACE_ROOT=${WS_DIR}" >> "${WS_DIR}/.env"
       fi
-      # Propagate dev-lab secrets (upsert)
+      # Propagate dev-lab secrets (upsert). Written as SONAR_TOKEN_API / SONAR_TOKEN_WEBAPP
+      # to match the keys the workspace's own tooling (e.g. /sonar-review) expects — same
+      # keys the fresh-workspace path below writes.
       if [ -n "${SONAR_TOKEN:-}" ]; then
-        if grep -q "^SONAR_TOKEN=" "${WS_DIR}/.env"; then
-          sed -i '' "s|^SONAR_TOKEN=.*|SONAR_TOKEN=${SONAR_TOKEN}|" "${WS_DIR}/.env"
-        else
-          echo "SONAR_TOKEN=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
-        fi
+        for SONAR_KEY in SONAR_TOKEN_API SONAR_TOKEN_WEBAPP; do
+          if grep -q "^${SONAR_KEY}=" "${WS_DIR}/.env"; then
+            sed -i '' "s|^${SONAR_KEY}=.*|${SONAR_KEY}=${SONAR_TOKEN}|" "${WS_DIR}/.env"
+          else
+            echo "${SONAR_KEY}=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
+          fi
+        done
       fi
       cat > "${WS_DIR}/Procfile.dev" <<'PROCFILE'
 web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
