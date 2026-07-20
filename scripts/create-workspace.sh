@@ -197,7 +197,7 @@ fi
 
 # ── Install and bootstrap ─────────────────────────────────────────────────────
 echo "📚 Installing dependencies..."
-cd "${WS_DIR}/code/api" && composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php
+cd "${WS_DIR}/code/api" && composer install --no-interaction --prefer-dist --no-progress --quiet
 cd "${WS_DIR}/code/webapp" && npm install --silent
 
 echo "🔑 Bootstrapping Laravel..."
