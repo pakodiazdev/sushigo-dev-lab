@@ -152,7 +152,7 @@ for i in $(seq 0 $((WORKSPACES - 1))); do
 
       echo "  📚 Updating PHP dependencies..."
       cd "${WS_DIR}/code/api"
-      composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php
+      composer install --no-interaction --prefer-dist --no-progress --quiet
 
       echo "  📦 Updating Node dependencies..."
       cd "${WS_DIR}/code/webapp"
@@ -282,7 +282,7 @@ PROCFILE
   # Install dependencies
   echo "  📚 Installing PHP dependencies..."
   cd "${WS_DIR}/code/api"
-  composer install --no-interaction --prefer-dist --no-progress --quiet --ignore-platform-req=php
+  composer install --no-interaction --prefer-dist --no-progress --quiet
 
   echo "  📦 Installing Node dependencies..."
   cd "${WS_DIR}/code/webapp"
