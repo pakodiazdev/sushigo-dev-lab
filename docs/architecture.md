@@ -39,9 +39,12 @@ Each workspace is a full git clone of sushigo with:
 | Laravel process | ✅ own `php -S` on unique port |
 | Vite process | ✅ own `npm run dev` on unique port |
 | PostgreSQL database | ✅ `sushigo_ws_<letter>` |
+| PHPUnit test database | ✅ `sushigo_ws_<letter>_test` |
 | `.env` file | ✅ own APP_PORT, VITE_PORT, DB_DATABASE |
 
 Redis and Mailpit are shared — this is intentional. Cache keys are namespaced by `CACHE_PREFIX` set in each workspace's `code/api/.env` (the Laravel env, not the workspace root `.env`). Mailpit captures all outbound mail from all workspaces in one UI, which is convenient for development.
+
+The test database used to be a single shared `mydb_test` on the assumption that PHPUnit's per-test transactions would prevent collisions between workspaces running `php artisan test` concurrently. In practice, `RefreshDatabase`'s schema setup isn't protected by that transaction, causing real `SQLSTATE[40P01]` deadlocks — each workspace now gets its own `sushigo_ws_<letter>_test` database via `code/api/.env.testing`, which Laravel loads instead of `.env` when `APP_ENV=testing`.
 
 ## Port assignment
 

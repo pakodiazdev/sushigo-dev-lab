@@ -91,20 +91,6 @@ until docker compose -f "${ROOT_DIR}/docker-compose.yml" exec -T db \
 done
 echo "✅ PostgreSQL ready"
 
-# ── PHPUnit test database ───────────────────────────────────────────────────
-# mydb_test is hardcoded in each workspace's phpunit.xml (DB_DATABASE env).
-# It is shared across all workspaces — PHPUnit wraps each test in a transaction,
-# so concurrent runs don't collide. Create it once, regardless of --workspaces count.
-echo ""
-echo "🗄️  Ensuring PHPUnit test database (mydb_test) exists..."
-CREATE_OUTPUT="$(pg -d postgres -c "CREATE DATABASE mydb_test;" 2>&1)" || true
-if echo "${CREATE_OUTPUT}" | grep -q "already exists"; then
-  echo "  ℹ️  mydb_test already exists — skipping"
-elif echo "${CREATE_OUTPUT}" | grep -qi "error\|fatal\|permission"; then
-  echo "❌ Failed to create mydb_test: ${CREATE_OUTPUT}"
-  exit 1
-fi
-
 # ── Workspace creation loop ─────────────────────────────────────────────────
 mkdir -p "${ROOT_DIR}/workspaces"
 
@@ -113,6 +99,7 @@ for i in $(seq 0 $((WORKSPACES - 1))); do
   WS_NAME="sushigo-${LETTER}"
   WS_DIR="${ROOT_DIR}/workspaces/${WS_NAME}"
   DB_NAME="sushigo_ws_${LETTER}"
+  DB_NAME_TEST="${DB_NAME}_test"
   LETTER_UPPER="$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')"
   _slot_api_var="API_PORT_${LETTER_UPPER}"
   _slot_vite_var="VITE_PORT_${LETTER_UPPER}"
@@ -279,6 +266,18 @@ PROCFILE
     exit 1
   fi
 
+  # Create PHPUnit test database — isolated per workspace to avoid the
+  # SQLSTATE[40P01] deadlocks a single shared mydb_test caused when multiple
+  # workspaces ran `php artisan test` concurrently.
+  echo "  🗄️  Creating test database ${DB_NAME_TEST}..."
+  CREATE_OUTPUT="$(pg -d postgres -c "CREATE DATABASE ${DB_NAME_TEST};" 2>&1)" || true
+  if echo "${CREATE_OUTPUT}" | grep -q "already exists"; then
+    echo "  ℹ️  Test database already exists — skipping"
+  elif echo "${CREATE_OUTPUT}" | grep -qi "error\|fatal\|permission"; then
+    echo "❌ Failed to create test database: ${CREATE_OUTPUT}"
+    exit 1
+  fi
+
   # Install dependencies
   echo "  📚 Installing PHP dependencies..."
   cd "${WS_DIR}/code/api"
@@ -292,6 +291,14 @@ PROCFILE
   echo "  🔑 Generating app key..."
   cd "${WS_DIR}/code/api"
   php artisan key:generate --ansi --quiet
+
+  # .env.testing gives this workspace its own test database. Laravel loads this
+  # file INSTEAD OF .env when APP_ENV=testing (phpunit.xml sets that), so it must
+  # carry a full copy of .env — not just the overridden key — plus phpunit.xml
+  # already forces DB_HOST/PORT/USERNAME/PASSWORD, so only DB_DATABASE differs.
+  echo "  🧪 Configuring .env.testing (isolated test database)..."
+  cp .env .env.testing
+  sed -i '' "s|^DB_DATABASE=.*|DB_DATABASE=$(sed_esc "${DB_NAME_TEST}")|" .env.testing
 
   echo "  🔐 Generating Passport OAuth keys..."
   php artisan passport:keys --force --quiet
