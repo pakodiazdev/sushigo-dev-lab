@@ -235,6 +235,20 @@ If a seeder fails with a unique constraint violation:
 
 Seeders use `updateOrCreate()` by convention — if yours doesn't, that's the bug.
 
+### `SQLSTATE[40P01]: Deadlock detected` running `php artisan test`
+
+**Cause:** two or more workspaces ran `php artisan test` at the same time against a shared test database. Each workspace has its own isolated test database (`sushigo_ws_<letter>_test`, configured in `code/api/.env.testing`) — if you still see this, the workspace predates that fix and needs its `.env.testing` regenerated.
+**Fix:**
+```bash
+cd workspaces/sushigo-a/code/api
+cp .env .env.testing
+sed -i '' 's|^DB_DATABASE=.*|DB_DATABASE=sushigo_ws_a_test|' .env.testing
+```
+Then create the database if it doesn't exist yet:
+```bash
+psql -h 127.0.0.1 -U admin -d postgres -c "CREATE DATABASE sushigo_ws_a_test;"
+```
+
 ---
 
 ## Tool tokens

@@ -63,6 +63,7 @@ LETTER="${LETTERS[$NEXT_INDEX]}"
 WS_NAME="sushigo-${LETTER}"
 WS_DIR="${ROOT_DIR}/workspaces/${WS_NAME}"
 DB_NAME="sushigo_ws_${LETTER}"
+DB_NAME_TEST="${DB_NAME}_test"
 LETTER_UPPER="$(echo "${LETTER}" | tr '[:lower:]' '[:upper:]')"
 _slot_api_var="API_PORT_${LETTER_UPPER}"
 _slot_vite_var="VITE_PORT_${LETTER_UPPER}"
@@ -96,16 +97,17 @@ if ! docker compose -f "${ROOT_DIR}/docker-compose.yml" exec -T db \
 fi
 
 # ── PHPUnit test database ───────────────────────────────────────────────────
-# mydb_test is hardcoded in each workspace's phpunit.xml (DB_DATABASE env).
-# It is shared across all workspaces — PHPUnit wraps each test in a transaction,
-# so concurrent runs don't collide. Safe to (re)create here since setup.sh may
-# not have run yet, or this may be the first workspace on a fresh lab.
-echo "🗄️  Ensuring PHPUnit test database (mydb_test) exists..."
-CREATE_OUTPUT="$(pg -d postgres -c "CREATE DATABASE mydb_test;" 2>&1)" || true
+# Each workspace gets its own test database (sushigo_ws_<letter>_test), mirroring
+# the per-workspace dev database. A single shared mydb_test previously caused
+# SQLSTATE[40P01] deadlocks when two workspaces ran `php artisan test` at the
+# same time — RefreshDatabase's schema setup isn't protected by per-test
+# transactions the way individual test data is.
+echo "🗄️  Ensuring PHPUnit test database (${DB_NAME_TEST}) exists..."
+CREATE_OUTPUT="$(pg -d postgres -c "CREATE DATABASE ${DB_NAME_TEST};" 2>&1)" || true
 if echo "${CREATE_OUTPUT}" | grep -q "already exists"; then
-  echo "ℹ️  mydb_test already exists — skipping"
+  echo "ℹ️  ${DB_NAME_TEST} already exists — skipping"
 elif echo "${CREATE_OUTPUT}" | grep -qi "error\|fatal\|permission"; then
-  echo "❌ Failed to create mydb_test: ${CREATE_OUTPUT}"
+  echo "❌ Failed to create ${DB_NAME_TEST}: ${CREATE_OUTPUT}"
   exit 1
 fi
 
@@ -203,6 +205,14 @@ cd "${WS_DIR}/code/webapp" && npm install --silent
 echo "🔑 Bootstrapping Laravel..."
 cd "${WS_DIR}/code/api"
 php artisan key:generate --ansi --quiet
+
+# .env.testing gives this workspace its own test database. Laravel loads this
+# file INSTEAD OF .env when APP_ENV=testing (phpunit.xml sets that), so it must
+# carry a full copy of .env — not just the overridden key — plus phpunit.xml
+# already forces DB_HOST/PORT/USERNAME/PASSWORD, so only DB_DATABASE differs.
+echo "🧪 Configuring .env.testing (isolated test database)..."
+cp .env .env.testing
+sed -i '' "s|^DB_DATABASE=.*|DB_DATABASE=$(sed_esc "${DB_NAME_TEST}")|" .env.testing
 
 echo "🔐 Generating Passport OAuth keys..."
 php artisan passport:keys --force --quiet
