@@ -217,12 +217,12 @@ Closes #009
 
 **Why:** a merged PR with no `Closes` line leaves its issue open — someone has to notice and close it by hand. Two PRs (#44, #46) already merged without one and both issues had to be closed manually after the fact.
 
-Every PR body **must** also include a `Review:` line right under `Closes #NNN`, linking to that same PR's DeepWiki page:
+Every PR body **must** also include a `Devin Review:` line right under `Closes #NNN`, linking to that same PR's DeepWiki page:
 
 ```
 ## Summary
 Closes #009
-Review: https://deepwiki.com/pakodiazdev/sushigo/pull/294
+Devin Review: https://deepwiki.com/pakodiazdev/sushigo/pull/294
 
 - ...
 ```
