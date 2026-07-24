@@ -217,6 +217,20 @@ Closes #009
 
 **Why:** a merged PR with no `Closes` line leaves its issue open — someone has to notice and close it by hand. Two PRs (#44, #46) already merged without one and both issues had to be closed manually after the fact.
 
+Every PR body **must** also include a `Review:` line right under `Closes #NNN`, linking to that same PR's DeepWiki page:
+
+```
+## Summary
+Closes #009
+Review: https://deepwiki.com/pakodiazdev/sushigo/pull/294
+
+- ...
+```
+
+**Why:** DeepWiki mirrors public GitHub repos for free and surfaces the automated PR review (Devin) without needing write access to a paid tool. Placing it at the top of the Summary, next to `Closes #NNN`, keeps it one click away for any reviewer instead of buried in a comment thread.
+
+**How:** the PR number isn't known until the PR exists, so this line is added in a follow-up edit right after `gh pr create` returns the number — `gh pr edit <N> --body "..."` — before requesting review. Swap `sushigo` for `sushigo-dev-lab` in the URL when opening a PR in this repo instead.
+
 > **Scope:** like the PR title convention above, the `## Workspace` footer applies to PRs in the `sushigo` repo only — not to PRs in `sushigo-dev-lab` itself.
 
 Every PR opened in `sushigo` from a dev-lab workspace **must** also include a `## Workspace` footer:
