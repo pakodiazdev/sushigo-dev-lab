@@ -5,7 +5,10 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
-      POSTGRES_DB: sushigo_shared
+      # Default maintenance database, always present — every workspace connects
+      # with `-d postgres` for admin commands and creates its own
+      # sushigo_ws_<letter> database, so no dedicated default database is needed here.
+      POSTGRES_DB: postgres
     ports:
       - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
