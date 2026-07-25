@@ -24,6 +24,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WS_DIR_BASE="${ROOT_DIR}/workspaces"
 
+# Load tools.env (per-slot AGENT_LABEL_* overrides, versions + port config)
+if [ -f "${ROOT_DIR}/tools.env" ]; then
+  source "${ROOT_DIR}/tools.env"
+fi
+
 TARGET=""
 COUNT=""
 
@@ -52,6 +57,9 @@ PROCFILE
 # Reads the current git branch, extracts the issue number, and writes
 # VITE_AGENT_LABEL ([A:#065]) to code/webapp/.env.
 # Safe no-op if webapp/.env does not exist.
+# Base label comes from AGENT_LABEL_<LETTER> in tools.env when set (e.g. "[Alpha]"),
+# falling back to "[<LETTER>]" otherwise — this makes the tools.env override
+# take effect on every start instead of only at workspace creation time.
 # Note: branch info is no longer written as VITE_GIT_BRANCH — the webapp reads
 # the branch live from .git/HEAD via the virtual:git-branch Vite plugin.
 inject_agent_label() {
@@ -59,21 +67,33 @@ inject_agent_label() {
   local webapp_env="${ws_dir}/code/webapp/.env"
   [ -f "${webapp_env}" ] || return 0
 
-  local letter branch issue_num agent_label base_label
+  local letter branch issue_num agent_label base_label label_var
   letter=$(basename "${ws_dir}" | sed 's/sushigo-//' | tr '[:lower:]' '[:upper:]')
   branch=$(git -C "${ws_dir}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
   issue_num=$(echo "${branch}" | grep -oE '[0-9]+' | head -1 || true)
-  base_label="[${letter}]"
+  label_var="AGENT_LABEL_${letter}"
+  base_label="${!label_var:-[${letter}]}"
   if [ -n "${issue_num}" ]; then
     agent_label="${base_label%]}:#${issue_num}] "
   else
     agent_label="${base_label} "
   fi
 
+  # base_label may come from tools.env (developer-controlled) and could contain
+  # characters that break a double-quoted .env value or the sed replacement
+  # below. Escape backslash and double-quote for a valid .env value first.
+  local env_value
+  env_value="${agent_label//\\/\\\\}"
+  env_value="${env_value//\"/\\\"}"
+
   if grep -q "^VITE_AGENT_LABEL=" "${webapp_env}"; then
-    sed -i '' "s|^VITE_AGENT_LABEL=.*|VITE_AGENT_LABEL=\"${agent_label}\"|" "${webapp_env}"
+    # Further escape backslash, ampersand, and the | delimiter so the value
+    # round-trips safely as sed replacement text.
+    local sed_value
+    sed_value=$(printf '%s' "${env_value}" | sed -e 's/[\&|]/\\&/g')
+    sed -i '' "s|^VITE_AGENT_LABEL=.*|VITE_AGENT_LABEL=\"${sed_value}\"|" "${webapp_env}"
   else
-    echo "VITE_AGENT_LABEL=\"${agent_label}\"" >> "${webapp_env}"
+    echo "VITE_AGENT_LABEL=\"${env_value}\"" >> "${webapp_env}"
   fi
 }
 
