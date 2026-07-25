@@ -158,7 +158,7 @@ This drops and recreates the database, then reruns all migrations and seeders. T
 make delete-workspace WORKSPACE=sushigo-a
 ```
 
-This stops the workspace's Overmind session if running, terminates active connections and drops its databases (`sushigo_ws_<letter>`, `sushigo_ws_<letter>_test`, `sushigo_ws_<letter>_e2e`), then removes `workspaces/sushigo-<letter>`. It does not touch shared Docker services or any other workspace. Running it on a workspace that doesn't exist exits with an error and lists the available workspaces instead of silently doing nothing.
+This stops the workspace's Overmind session if running, stops its E2E stack if running (`stop-e2e.sh` — the Vite E2E dev server and the `e2e-api-<letter>` container), terminates active connections and drops its databases (`sushigo_ws_<letter>`, `sushigo_ws_<letter>_test`, `sushigo_ws_<letter>_e2e`), then removes `workspaces/sushigo-<letter>`. It does not touch shared Docker services or any other workspace. Running it on a workspace that doesn't exist exits with an error and lists the available workspaces instead of silently doing nothing.
 
 ## Shared resources
 
