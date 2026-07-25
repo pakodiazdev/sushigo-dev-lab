@@ -24,6 +24,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WS_DIR_BASE="${ROOT_DIR}/workspaces"
 
+source "${SCRIPT_DIR}/lib/workspace-bootstrap.sh"
+
 # Load tools.env (per-slot AGENT_LABEL_* overrides, versions + port config)
 if [ -f "${ROOT_DIR}/tools.env" ]; then
   source "${ROOT_DIR}/tools.env"
@@ -41,16 +43,8 @@ done
 
 PG_USER="${POSTGRES_USER:-admin}"
 
-# ── Shared helper: write Procfile.dev with absolute paths ────────────────────
-# Usage: write_procfile <ws_dir>
+# write_procfile <ws_dir> is sourced from lib/workspace-bootstrap.sh.
 # Reads WORKSPACE_ROOT, APP_PORT, VITE_PORT from <ws_dir>/.env.
-write_procfile() {
-  local ws_dir="$1"
-  cat > "${ws_dir}/Procfile.dev" <<'PROCFILE'
-web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
-vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
-PROCFILE
-}
 
 # ── Shared helper: inject agent label into webapp .env ───────────────────────
 # Usage: inject_agent_label <ws_dir>
