@@ -4,8 +4,9 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # delete-workspace.sh — Cleanly remove one workspace slot
 #
-# Stops its Overmind session, drops its databases, and removes its directory.
-# Does not touch shared Docker services or any other workspace.
+# Stops its Overmind session and E2E stack (if running), drops its databases,
+# and removes its directory. Does not touch shared Docker services or any
+# other workspace.
 #
 # Usage:
 #   ./scripts/delete-workspace.sh sushigo-a
@@ -74,6 +75,11 @@ if [ -S "${WS_DIR}/.overmind.sock" ]; then
 else
   echo "  ⏹  No running Overmind session found — skipping"
 fi
+
+# ── Stop E2E stack if running (container + Vite dev server) ─────────────────
+# Must run before dropping ${DB_NAME_E2E} below, otherwise the e2e-api
+# container can reconnect between pg_terminate_backend and DROP DATABASE.
+"${SCRIPT_DIR}/stop-e2e.sh" "${TARGET}"
 
 # ── Drop databases ────────────────────────────────────────────────────────────
 for db in "${DB_NAME}" "${DB_NAME_TEST}" "${DB_NAME_E2E}"; do
