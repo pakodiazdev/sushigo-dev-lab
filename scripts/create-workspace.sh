@@ -12,6 +12,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+source "${SCRIPT_DIR}/lib/workspace-bootstrap.sh"
+
 BRANCH="main"
 REPO="https://github.com/pakodiazdev/sushigo.git"
 LETTERS=(a b c d e f g h)
@@ -32,7 +34,6 @@ PG_HOST="${POSTGRES_HOST:-127.0.0.1}"
 PG_PORT="${POSTGRES_HOST_PORT:-5432}"
 export PGPASSWORD="${PG_PASS}"
 pg() { psql -h "${PG_HOST}" -p "${PG_PORT}" -U "${PG_USER}" "$@"; }
-sed_esc() { printf '%s' "$1" | sed 's/\\/\\\\/g' | sed 's/[&|]/\\&/g'; }
 
 for arg in "$@"; do
   case $arg in
@@ -118,74 +119,12 @@ cd "${WS_DIR}"
 
 # ── Configure .env ───────────────────────────────────────────────────────────
 echo "⚙️  Configuring .env..."
-cp code/api/.env.example code/api/.env
-sed -i '' "s|^APP_URL=.*|APP_URL=http://127.0.0.1:${APP_PORT}|" code/api/.env
-sed -i '' "s|^DB_HOST=.*|DB_HOST=$(sed_esc "${PG_HOST}")|" code/api/.env
-sed -i '' "s|^DB_DATABASE=.*|DB_DATABASE=$(sed_esc "${DB_NAME}")|" code/api/.env
-sed -i '' "s|^DB_USERNAME=.*|DB_USERNAME=$(sed_esc "${PG_USER}")|" code/api/.env
-sed -i '' "s|^DB_PASSWORD=.*|DB_PASSWORD=$(sed_esc "${PG_PASS}")|" code/api/.env
-# Set a unique cache/queue prefix to avoid Redis key collisions between workspaces
-if grep -q "^CACHE_PREFIX" code/api/.env; then
-  sed -i '' "s|^CACHE_PREFIX=.*|CACHE_PREFIX=ws_${LETTER}_|" code/api/.env
-else
-  echo "CACHE_PREFIX=ws_${LETTER}_" >> code/api/.env
-fi
-# Enable dev-debug login for local development
-sed -i '' "s|^LOGIN_WITH_DEVDEBUG=.*|LOGIN_WITH_DEVDEBUG=true|" code/api/.env
-sed -i '' "s|^DEV_LOGIN_ALLOWED_ENVIRONMENTS=.*|DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest,local|" code/api/.env
-# Enable clock simulation for local development
-sed -i '' "s|^CLOCK_SIMULATION_ENABLED=.*|CLOCK_SIMULATION_ENABLED=true|" code/api/.env
-# Enable payroll attendance seed for local development
-sed -i '' "s|^PAYROLL_SEED_ENABLED=.*|PAYROLL_SEED_ENABLED=true|" code/api/.env
-# Allow the workspace's Vite dev-server port in CORS (both localhost and 127.0.0.1)
-CORS_ORIGINS="http://localhost:${VITE_PORT},http://127.0.0.1:${VITE_PORT}"
-if grep -q "^CORS_ALLOWED_ORIGINS" code/api/.env; then
-  sed -i '' "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}|" code/api/.env
-else
-  echo "CORS_ALLOWED_ORIGINS=${CORS_ORIGINS}" >> code/api/.env
-fi
-# Point Swagger to this workspace's backend port so generated docs hit the right server
-if grep -q "^L5_SWAGGER_CONST_HOST" code/api/.env; then
-  sed -i '' "s|^L5_SWAGGER_CONST_HOST=.*|L5_SWAGGER_CONST_HOST=http://127.0.0.1:${APP_PORT}|" code/api/.env
-else
-  echo "L5_SWAGGER_CONST_HOST=http://127.0.0.1:${APP_PORT}" >> code/api/.env
-fi
+configure_api_env "${WS_DIR}" "${LETTER}" "${APP_PORT}" "${VITE_PORT}" "${DB_NAME}" "${PG_HOST}" "${PG_USER}" "${PG_PASS}"
+configure_webapp_env "${WS_DIR}" "${APP_PORT}" "${WS_LABEL}"
+configure_workspace_env "${WS_DIR}" "${APP_PORT}" "${VITE_PORT}" "${DB_NAME}" "${SONAR_TOKEN:-}"
 
-# Configure webapp .env (VITE_HMR_HOST intentionally unset → Vite auto-detects in local dev)
-cat > "${WS_DIR}/code/webapp/.env" <<EOF
-VITE_API_URL=http://localhost:${APP_PORT}/api/v1
-VITE_APP_ENV=dev
-VITE_TIME_FORMAT=12
-VITE_DEV_DEBUGGER_START_HIDDEN=false
-VITE_LOGIN_WITH_DEVDEBUG=true
-VITE_DEV_LOGIN_ALLOWED_ENVIRONMENTS=dev,devtest
-VITE_ENV_BADGE="🟢 "
-VITE_AGENT_LABEL="${WS_LABEL} "
-VITE_WEEK_START_DAY=1
-EOF
-
-cat > "${WS_DIR}/.env" <<EOF
-APP_PORT=${APP_PORT}
-VITE_PORT=${VITE_PORT}
-DB_DATABASE=${DB_NAME}
-WORKSPACE_ROOT=${WS_DIR}
-EOF
-# Propagate tool tokens from tools.env so workspace shell sessions have them available.
-# SONAR_TOKEN is a user-level token that covers both API and webapp SonarCloud projects.
-if [ -n "${SONAR_TOKEN:-}" ]; then
-  echo "SONAR_TOKEN_API=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
-  echo "SONAR_TOKEN_WEBAPP=${SONAR_TOKEN}" >> "${WS_DIR}/.env"
-fi
-
-# Patch Procfile.dev with absolute paths so overmind works regardless of cwd
-# (overmind creates its own tmux server which does not inherit the caller's cwd)
-cat > "${WS_DIR}/Procfile.dev" <<'PROCFILE'
-web:    php -S 0.0.0.0:${APP_PORT:-8000} -t ${WORKSPACE_ROOT}/code/api/public
-vite:   npm --prefix ${WORKSPACE_ROOT}/code/webapp run dev -- --port ${VITE_PORT:-5173} --host 0.0.0.0
-PROCFILE
-
-# Mark Procfile.dev as skip-worktree: dev-lab owns it locally, git ignores changes
-git -C "${WS_DIR}" update-index --skip-worktree Procfile.dev
+write_procfile "${WS_DIR}"
+mark_procfile_skip_worktree "${WS_DIR}"
 
 # ── Create database ───────────────────────────────────────────────────────────
 echo "🗄️  Creating database ${DB_NAME}..."
@@ -198,30 +137,8 @@ elif echo "${CREATE_OUTPUT}" | grep -qi "error\|fatal\|permission"; then
 fi
 
 # ── Install and bootstrap ─────────────────────────────────────────────────────
-echo "📚 Installing dependencies..."
-cd "${WS_DIR}/code/api" && composer install --no-interaction --prefer-dist --no-progress --quiet
-cd "${WS_DIR}/code/webapp" && npm install --silent
-
-echo "🔑 Bootstrapping Laravel..."
-cd "${WS_DIR}/code/api"
-php artisan key:generate --ansi --quiet
-
-# .env.testing gives this workspace its own test database. Laravel loads this
-# file INSTEAD OF .env when APP_ENV=testing (phpunit.xml sets that), so it must
-# carry a full copy of .env — not just the overridden key — plus phpunit.xml
-# already forces DB_HOST/PORT/USERNAME/PASSWORD, so only DB_DATABASE differs.
-echo "🧪 Configuring .env.testing (isolated test database)..."
-cp .env .env.testing
-sed -i '' "s|^DB_DATABASE=.*|DB_DATABASE=$(sed_esc "${DB_NAME_TEST}")|" .env.testing
-
-echo "🔐 Generating Passport OAuth keys..."
-php artisan passport:keys --force --quiet
-
-php artisan migrate --force --quiet
-php artisan db:seed --force --quiet
-
-echo "📖 Generating Swagger docs..."
-php artisan l5-swagger:generate --quiet
+install_deps "${WS_DIR}"
+bootstrap_laravel "${WS_DIR}" "${DB_NAME_TEST}"
 
 echo ""
 echo "✅ ${WS_NAME} is ready"
