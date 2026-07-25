@@ -60,6 +60,13 @@ echo "   Directory: ${WS_DIR}"
 echo "   Databases: ${DB_NAME}, ${DB_NAME_TEST}, ${DB_NAME_E2E}"
 echo ""
 
+# ── Check shared services before making any destructive change ──────────────
+if ! pg -d postgres -c '\q' &>/dev/null; then
+  echo "❌ Cannot connect to PostgreSQL at ${PG_HOST}:${PG_PORT}"
+  echo "   Run: docker compose up -d"
+  exit 1
+fi
+
 # ── Stop Overmind if running ─────────────────────────────────────────────────
 if [ -S "${WS_DIR}/.overmind.sock" ]; then
   echo "  ⏹  Stopping Overmind session..."
@@ -69,12 +76,6 @@ else
 fi
 
 # ── Drop databases ────────────────────────────────────────────────────────────
-if ! pg -d postgres -c '\q' &>/dev/null; then
-  echo "❌ Cannot connect to PostgreSQL at ${PG_HOST}:${PG_PORT}"
-  echo "   Run: docker compose up -d"
-  exit 1
-fi
-
 for db in "${DB_NAME}" "${DB_NAME_TEST}" "${DB_NAME_E2E}"; do
   echo "  🗄️  Dropping ${db}..."
   pg -d postgres \

@@ -150,6 +150,16 @@ make reset-db WORKSPACE=sushigo-a
 
 This drops and recreates the database, then reruns all migrations and seeders. The agent process does not need to be stopped, but in-flight requests will see transient DB errors during the reset. If the server fails to reconnect on the next request, restart the workspace with `overmind restart web`.
 
+## Deleting workspaces
+
+```bash
+./scripts/delete-workspace.sh sushigo-a
+./scripts/delete-workspace.sh a
+make delete-workspace WORKSPACE=sushigo-a
+```
+
+This stops the workspace's Overmind session if running, terminates active connections and drops its databases (`sushigo_ws_<letter>`, `sushigo_ws_<letter>_test`, `sushigo_ws_<letter>_e2e`), then removes `workspaces/sushigo-<letter>`. It does not touch shared Docker services or any other workspace. Running it on a workspace that doesn't exist exits with an error and lists the available workspaces instead of silently doing nothing.
+
 ## Shared resources
 
 Redis and Mailpit are shared across all workspaces:
