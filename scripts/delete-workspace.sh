@@ -71,7 +71,9 @@ fi
 # ── Stop Overmind if running ─────────────────────────────────────────────────
 if [ -S "${WS_DIR}/.overmind.sock" ]; then
   echo "  ⏹  Stopping Overmind session..."
-  (cd "${WS_DIR}" && overmind quit) 2>/dev/null || true
+  if ! (cd "${WS_DIR}" && overmind quit) 2>/dev/null; then
+    echo "  ⚠️  Failed to stop Overmind cleanly — workspace processes may still be running"
+  fi
 else
   echo "  ⏹  No running Overmind session found — skipping"
 fi
