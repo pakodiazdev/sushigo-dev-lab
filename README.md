@@ -210,6 +210,7 @@ make down                            # docker compose down
 make init                            # ./scripts/init.sh
 make init WORKSPACE=sushigo-a        # ./scripts/init.sh sushigo-a
 make reset-db WORKSPACE=sushigo-a    # ./scripts/reset-workspace-db.sh sushigo-a
+make update-workspaces                # ./scripts/update-workspaces.sh
 make logs                            # docker compose logs -f
 ```
 

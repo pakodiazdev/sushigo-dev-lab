@@ -141,6 +141,18 @@ cd workspaces/sushigo-a/code/api
 php artisan migrate
 ```
 
+## Updating all workspaces to main
+
+```bash
+./scripts/update-workspaces.sh
+make update-workspaces
+```
+
+This checks out `main` and fast-forward pulls the latest changes in every `workspaces/sushigo-*/`
+clone. A workspace with uncommitted changes is skipped and reported, never stashed or discarded.
+A workspace whose branch has diverged from `origin/main` (non-fast-forward) is also skipped and
+reported — resolve that one manually with a rebase or merge.
+
 ## Resetting a database
 
 ```bash

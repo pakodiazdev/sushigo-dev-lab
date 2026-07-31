@@ -1,4 +1,4 @@
-.PHONY: help doctor install setup up down logs init reset-db add-workspace delete-workspace e2e e2e-stop cypress cypress-run
+.PHONY: help doctor install setup up down logs init reset-db add-workspace delete-workspace update-workspaces e2e e2e-stop cypress cypress-run
 
 WORKSPACE ?=
 PHP    ?=
@@ -26,6 +26,7 @@ help:
 	@echo "  make add-workspace BRANCH=feat/x    Add a new workspace on a specific branch"
 	@echo "  make reset-db WORKSPACE=sushigo-a   Wipe and re-seed one workspace database"
 	@echo "  make delete-workspace WORKSPACE=sushigo-a  Remove one workspace slot (Overmind + DB + dir)"
+	@echo "  make update-workspaces               Switch every workspace to main and pull latest"
 	@echo "  make e2e WORKSPACE=sushigo-a          Start E2E stack (container + Vite) for a workspace"
 	@echo "  make e2e-stop WORKSPACE=sushigo-a     Stop E2E stack for a workspace"
 	@echo "  make cypress WORKSPACE=sushigo-a      Open Cypress GUI against the running E2E stack"
@@ -79,6 +80,9 @@ ifeq ($(strip $(WORKSPACE)),)
 	$(error WORKSPACE is required. Usage: make delete-workspace WORKSPACE=sushigo-a)
 endif
 	@./scripts/delete-workspace.sh $(WORKSPACE)
+
+update-workspaces:
+	@./scripts/update-workspaces.sh
 
 e2e:
 ifeq ($(strip $(WORKSPACE)),)
