@@ -1,0 +1,24 @@
+name: Bats (macOS)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/bats-macos.yml'
+
+jobs:
+  bats:
+    # workspace-bootstrap.sh relies on macOS-specific `sed -i ''` behavior —
+    # this suite validates the supported platform, not Linux portability.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bats
+        run: brew install bats-core
+
+      - name: Run Bats suite
+        run: bats tests/lib/workspace_bootstrap.bats
