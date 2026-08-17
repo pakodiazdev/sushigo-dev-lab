@@ -61,6 +61,7 @@ sushigo-dev-lab/
     ├── setup.sh              # Clone N workspaces, configure, install, migrate
     ├── init.sh               # Start one or all workspaces
     ├── create-workspace.sh   # Add a new workspace at any time
+    ├── status.sh             # Show every workspace slot's branch, ports and runtime state
     └── reset-workspace-db.sh # Wipe + re-seed one workspace's database
 ```
 
@@ -192,6 +193,27 @@ Auto-detects the next available letter and port. Clones sushigo on `main` by def
 
 ---
 
+### `status.sh` — workspace runtime overview
+
+```bash
+./scripts/status.sh
+# or: make status
+```
+
+Reports every slot (`a` through `h`): git branch, `APP_PORT`, `VITE_PORT`, and a state derived
+from actually talking to Overmind — not from the mere existence of `.overmind.sock`, which
+survives both a clean `overmind quit` and an unclean crash of the Overmind master process.
+
+| State | Meaning |
+|---|---|
+| `unconfigured` | no workspace directory / `.env` for this slot |
+| `stopped` | no processes running (never started, or cleanly quit) |
+| `running` | every process in the workspace's Procfile is running |
+| `degraded` | some, but not all, processes are running |
+| `stale-socket` | `.overmind.sock` exists but nothing answers on it |
+
+---
+
 ### `reset-workspace-db.sh` — reset one database
 
 ```bash
@@ -209,6 +231,7 @@ make up                              # docker compose up -d
 make down                            # docker compose down
 make init                            # ./scripts/init.sh
 make init WORKSPACE=sushigo-a        # ./scripts/init.sh sushigo-a
+make status                          # ./scripts/status.sh
 make reset-db WORKSPACE=sushigo-a    # ./scripts/reset-workspace-db.sh sushigo-a
 make update-workspaces                # ./scripts/update-workspaces.sh
 make logs                            # docker compose logs -f
