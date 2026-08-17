@@ -1,4 +1,4 @@
-.PHONY: help doctor install setup up down logs init reset-db add-workspace delete-workspace update-workspaces e2e e2e-stop cypress cypress-run
+.PHONY: help doctor install setup up down logs init status reset-db add-workspace delete-workspace update-workspaces e2e e2e-stop cypress cypress-run
 
 WORKSPACE ?=
 PHP    ?=
@@ -22,6 +22,7 @@ help:
 	@echo "  make down                           Stop all workspaces (Overmind) + Docker services"
 	@echo "  make logs                           Follow Docker service logs"
 	@echo "  make init WORKSPACE=sushigo-a       Start a specific workspace (foreground)"
+	@echo "  make status                         Show every workspace slot's branch, ports and runtime state"
 	@echo "  make add-workspace                  Add a new workspace clone"
 	@echo "  make add-workspace BRANCH=feat/x    Add a new workspace on a specific branch"
 	@echo "  make reset-db WORKSPACE=sushigo-a   Wipe and re-seed one workspace database"
@@ -65,6 +66,9 @@ logs:
 
 init:
 	@./scripts/init.sh $(WORKSPACE)
+
+status:
+	@./scripts/status.sh
 
 add-workspace:
 	@./scripts/create-workspace.sh $(if $(BRANCH),--branch=$(BRANCH),)
