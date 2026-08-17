@@ -80,14 +80,23 @@ services:
       # root and not writable by the pgadmin user the container runs as —
       # /var/lib/pgadmin (the persisted volume below) is.
       PGADMIN_SERVER_JSON_FILE: /var/lib/pgadmin/servers.json
-    entrypoint: ["/bin/sh", "/custom-entrypoint.sh"]
+    entrypoint: ["/bin/bash", "/custom-entrypoint.sh"]
     ports:
       - "127.0.0.1:${PGADMIN_HOST_PORT:-5050}:80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
       - ./docker/pgadmin/entrypoint.sh:/custom-entrypoint.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/misc/ping 2>/dev/null | grep -q PING || exit 1"]
+      # pgAdmin is a Python app and always ships python3 — wget/curl are not
+      # guaranteed to be present in this image, so use the interpreter
+      # that's certain to be there instead of an extra OS-level dependency.
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import sys,urllib.request as u; sys.exit(0 if u.urlopen('http://127.0.0.1/misc/ping', timeout=3).read() == b'PING' else 1)",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
