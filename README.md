@@ -281,8 +281,22 @@ CYPRESS_BASE_URL=http://localhost:5171 npx cypress open
 | PostgreSQL | `localhost:5432` | Database for all workspaces |
 | Redis | `localhost:6379` | Cache / queues |
 | Mailpit | http://localhost:8025 | Email UI (catches all outbound mail) |
+| pgAdmin (opt-in) | http://localhost:5050 | Visual browser for the shared PostgreSQL instance |
 
 All workspaces connect to the same PostgreSQL instance but use isolated databases (`sushigo_ws_a`, `sushigo_ws_b`, ...). Redis is shared — cache keys are namespaced per workspace via `CACHE_PREFIX` in each `.env`.
+
+### pgAdmin
+
+Not started by `docker compose up` / `make up` — pgAdmin only runs when you ask for it, so it never adds to the lab's default footprint:
+
+```bash
+make pgadmin         # start pgAdmin at http://127.0.0.1:5050
+make pgadmin-stop     # stop pgAdmin only — db/redis/mailpit and every workspace keep running
+```
+
+Opening `http://127.0.0.1:5050` goes straight to the browser tree — no login. The shared PostgreSQL server is already registered and connects without a password prompt, so every `sushigo_ws_<letter>` (plus its `_test` and `_e2e` siblings) is visible immediately under **Servers → sushigo-dev-lab → Databases**.
+
+Both the server definition and its credentials are generated at container startup from the same `POSTGRES_USER`/`POSTGRES_PASSWORD` the `db` service uses (see `.env.example`) — nothing is hardcoded, and nothing needs to be re-typed after changing them: recreate the container (`make pgadmin`, or `docker compose --profile tools up -d pgadmin --force-recreate`) and both the server entry and its stored password refresh automatically. pgAdmin's own preferences and connection history persist across restarts in the `pgadmin-data` volume. It binds to `127.0.0.1` only — override the port with `PGADMIN_HOST_PORT` in `.env` if `5050` is taken.
 
 ---
 

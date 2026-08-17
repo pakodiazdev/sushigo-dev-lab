@@ -1,4 +1,4 @@
-.PHONY: help doctor install setup up down logs init status reset-db add-workspace delete-workspace update-workspaces e2e e2e-stop cypress cypress-run
+.PHONY: help doctor install setup up down logs init status pgadmin pgadmin-stop reset-db add-workspace delete-workspace update-workspaces e2e e2e-stop cypress cypress-run
 
 WORKSPACE ?=
 PHP    ?=
@@ -23,6 +23,8 @@ help:
 	@echo "  make logs                           Follow Docker service logs"
 	@echo "  make init WORKSPACE=sushigo-a       Start a specific workspace (foreground)"
 	@echo "  make status                         Show every workspace slot's branch, ports and runtime state"
+	@echo "  make pgadmin                        Start pgAdmin (opt-in) at http://127.0.0.1:5050"
+	@echo "  make pgadmin-stop                   Stop pgAdmin only — leaves db/redis/mailpit running"
 	@echo "  make add-workspace                  Add a new workspace clone"
 	@echo "  make add-workspace BRANCH=feat/x    Add a new workspace on a specific branch"
 	@echo "  make reset-db WORKSPACE=sushigo-a   Wipe and re-seed one workspace database"
@@ -69,6 +71,14 @@ init:
 
 status:
 	@./scripts/status.sh
+
+pgadmin:
+	@docker compose --profile tools up -d pgadmin
+	@echo "✅ pgAdmin running at http://$$(docker compose port pgadmin 80)"
+
+pgadmin-stop:
+	@docker compose --profile tools stop pgadmin
+	@echo "✅ pgAdmin stopped — db/redis/mailpit and all workspaces are untouched"
 
 add-workspace:
 	@./scripts/create-workspace.sh $(if $(BRANCH),--branch=$(BRANCH),)
