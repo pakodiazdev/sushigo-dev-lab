@@ -42,5 +42,57 @@ services:
       timeout: 3s
       retries: 5
 
+  # Opt-in — not started by `docker compose up` / `make up`. Start explicitly
+  # with `make pgadmin` (see README's Shared services section). Browses the
+  # same shared PostgreSQL instance every workspace connects to, including
+  # every sushigo_ws_<letter>[_test|_e2e] database.
+  pgadmin:
+    image: dpage/pgadmin4:9.14.0
+    profiles: [tools]
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Read by docker/pgadmin/entrypoint.sh to (re)generate the server
+      # definition and pgpass file on every start — never committed, and
+      # always the same values the db service itself uses.
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      # pgAdmin requires *some* default account to bootstrap its internal
+      # user record even in desktop mode, where the login page below is
+      # disabled entirely — this is not a database credential.
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-dev@sushigo.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      # .local is on pgAdmin's reserved-TLD rejection list by default —
+      # explicitly allow it rather than use a real-looking domain here.
+      PGADMIN_CONFIG_ALLOW_SPECIAL_EMAIL_DOMAINS: "['local']"
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      # Re-imports servers.json into pgAdmin's internal server list on every
+      # start, not just the first — otherwise a credential change would sit
+      # unused in the regenerated file once pgadmin-data already has a DB.
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+      PGADMIN_DISABLE_POSTFIX: "true"
+      # /pgadmin4 (the image's default servers.json location) is owned by
+      # root and not writable by the pgadmin user the container runs as —
+      # /var/lib/pgadmin (the persisted volume below) is.
+      PGADMIN_SERVER_JSON_FILE: /var/lib/pgadmin/servers.json
+    entrypoint: ["/bin/sh", "/custom-entrypoint.sh"]
+    ports:
+      - "127.0.0.1:${PGADMIN_HOST_PORT:-5050}:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./docker/pgadmin/entrypoint.sh:/custom-entrypoint.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/misc/ping 2>/dev/null | grep -q PING || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
 volumes:
   pgdata:
+  pgadmin-data:
