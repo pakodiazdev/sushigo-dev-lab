@@ -3,11 +3,7 @@ name: Bats (macOS)
 on:
   push:
     branches: [main]
-  pull_request:
-    paths:
-      - 'scripts/**'
-      - 'tests/**'
-      - '.github/workflows/bats-macos.yml'
+  pull_request: {}
 
 jobs:
   bats:

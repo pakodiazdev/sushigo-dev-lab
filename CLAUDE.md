@@ -90,6 +90,8 @@ docker compose config --quiet
 - `docker-compose.yml` must pass `docker compose config --quiet`
 - Never commit with shellcheck errors
 
+`main` is protected: the `bats` status check (job in `.github/workflows/bats-macos.yml`, displayed as "Bats (macOS)") must pass and the PR branch must be up to date before GitHub allows a merge.
+
 ---
 
 ### Commit Messages (mandatory — always follow this exactly)
