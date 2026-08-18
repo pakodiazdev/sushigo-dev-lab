@@ -13,6 +13,10 @@ Each ADR captures a significant technical decision: what was decided, why, what 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [ADR-001](001-dynamic-workspace-label.md) | Dynamic workspace identity label injected by init.sh | ✅ Accepted | 2026-06-03 |
+| [ADR-002](002-shared-workspace-bootstrap-library.md) | Shared workspace-bootstrap library sourced by setup, create, and init | ✅ Accepted | 2026-07-25 |
+| [ADR-003](003-safe-workspace-deletion.md) | Safe, ordered workspace deletion via delete-workspace.sh | ✅ Accepted | 2026-07-25 |
+| [ADR-004](004-per-slot-e2e-infrastructure.md) | Per-slot lightweight E2E infrastructure, local Cypress over shared VNC/Docker Cypress | ✅ Accepted | 2026-06-07 |
+| [ADR-005](005-opt-in-pgadmin-service.md) | Opt-in pgAdmin service under the tools Compose profile | ✅ Accepted | 2026-08-17 |
 
 ---
 
